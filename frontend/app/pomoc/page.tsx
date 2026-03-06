@@ -17,6 +17,7 @@ import { StepTwo } from "@/components/steps/StepTwo";
 import { StepThree } from "@/components/steps/StepThree";
 import { StepFour } from "@/components/steps/StepFour";
 import { Header } from "@/components/layout/Header";
+import { ResponseModal, ApiResponse } from "@/components/ui/ResponseModal";
 
 const STEPS = [
     { id: 1, title: "Kdo potřebuje péči?", icon: User },
@@ -31,6 +32,8 @@ export default function CaregiverForm() {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [responseData, setResponseData] = useState<ApiResponse | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const updateData = (fields: Partial<FormData>) => {
         setData((prev) => ({ ...prev, ...fields }));
@@ -75,11 +78,18 @@ export default function CaregiverForm() {
                 body: JSON.stringify(payload),
             });
 
+            console.log('Response Status:', response.status);
+
+            const responseData = await response.json().catch(() => null);
+            console.log('Response Data:', responseData);
+
             if (!response.ok) {
-                throw new Error('Nepodařilo se odeslat data.');
+                throw new Error(`Nepodařilo se odeslat data. Status: ${response.status}`);
             }
 
+            setResponseData(responseData);
             setIsSubmitted(true);
+            setIsModalOpen(true);
         } catch (error) {
             console.error('Chyba při odesílání formuláře:', error);
             setSubmitError('Při odesílání formuláře došlo k chybě. Zkuste to prosím znovu.');
@@ -225,23 +235,38 @@ export default function CaregiverForm() {
                                 Děkujeme za informace
                             </h2>
                             <p className="text-slate-600 text-lg mb-8 max-w-sm mx-auto">
-                                Hledáme pro vás personalizovaný plán pomoci. Na základě vašich
-                                odpovědí připravujeme návrh dalších kroků.
+                                Vaše situace byla úspěšně vyhodnocena. Pokud jste zavřeli detailní přehled, můžete jej znovu otevřít nebo začít s novým formulářem.
                             </p>
-                            <button
-                                onClick={() => {
-                                    setData(initialData);
-                                    setStep(1);
-                                    setIsSubmitted(false);
-                                }}
-                                className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm"
-                            >
-                                Vyplnit znovu
-                            </button>
+
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                <button
+                                    onClick={() => setIsModalOpen(true)}
+                                    className="inline-flex items-center justify-center px-6 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-medium transition-colors"
+                                >
+                                    Zobrazit výsledek
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setData(initialData);
+                                        setStep(1);
+                                        setIsSubmitted(false);
+                                        setResponseData(null);
+                                    }}
+                                    className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm"
+                                >
+                                    Vyplnit znovu
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
-            </main >
-        </div >
+            </main>
+
+            <ResponseModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                data={responseData}
+            />
+        </div>
     );
 }
