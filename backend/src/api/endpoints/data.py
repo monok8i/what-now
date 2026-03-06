@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.depends import get_questionnaire_processor
@@ -29,6 +29,7 @@ async def health_check():
     status_code=status.HTTP_200_OK,
 )
 async def search_matching_benefits(
+    request: Request,
     questionnaire: CaregiverQuestionnaireRequest,
     db_session: AsyncSession = Depends(get_db),
     questionnaire_processor: QuestionnaireProcessor = Depends(
@@ -80,7 +81,7 @@ async def search_matching_benefits(
             criteria, formatted_results
         )
 
-        return MatchingBenefitsResponse(
+        result = MatchingBenefitsResponse(
             message=f"Nalezeno {len(benefit_results)} relevantních dávek a služeb.",
             submission_id=submission_id,
             total_matches=len(benefit_results),
@@ -90,8 +91,13 @@ async def search_matching_benefits(
             ai_response=ai_response,
         )
 
+        request.app.state.chat_metadata = result
+        request.app.state.chat_conversaion_history = []
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Chyba při vyhledávání: {str(e)}",
         ) from e
+
+    return result
