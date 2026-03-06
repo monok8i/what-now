@@ -9,6 +9,7 @@ import {
     Home,
     Briefcase,
     CheckCircle2,
+    Loader2,
 } from "lucide-react";
 import { FormData, initialData } from "@/types/form";
 import { StepOne } from "@/components/steps/StepOne";
@@ -28,14 +29,67 @@ export default function CaregiverForm() {
     const [step, setStep] = useState(1);
     const [data, setData] = useState<FormData>(initialData);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
     const updateData = (fields: Partial<FormData>) => {
         setData((prev) => ({ ...prev, ...fields }));
     };
 
+    const submitForm = async () => {
+        setIsSubmitting(true);
+        setSubmitError(null);
+
+        // Map internal form state to the required API payload structure
+        const payload = {
+            relationship: data.vztah,
+            care_recipient_age: parseInt(data.vek, 10) || 0,
+            care_recipient_gender: data.pohlavi,
+            self_sufficiency: data.sobestacnost,
+            has_care_allowance: data.prispevek,
+            situation_duration: data.trvani,
+            living_arrangement: data.bydleni,
+            postal_code: data.psc,
+            additional_help: data.pomoc,
+            employment_status: data.prace,
+            main_concerns: data.trapi,
+        };
+
+        // Determine API URL based on environment
+        // NOTE: Zde si změň URL adresy podle potřeby!
+        const apiUrl = process.env.NODE_ENV === 'production'
+            ? 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/submit'
+            : 'http://localhost:8001/api/data';
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error('Nepodařilo se odeslat data.');
+            }
+
+            setIsSubmitted(true);
+        } catch (error) {
+            console.error('Chyba při odesílání formuláře:', error);
+            setSubmitError('Při odesílání formuláře došlo k chybě. Zkuste to prosím znovu.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const nextStep = () => {
-        if (step < STEPS.length) setStep(step + 1);
-        else setIsSubmitted(true);
+        if (step < STEPS.length) {
+            setStep(step + 1);
+            setSubmitError(null);
+        } else {
+            submitForm();
+        }
     };
 
     const prevStep = () => {
@@ -111,31 +165,48 @@ export default function CaregiverForm() {
                                 </div>
 
                                 {/* Navigation Buttons */}
-                                <div className="mt-10 pt-6 border-t border-slate-100 flex items-center justify-between">
-                                    <button
-                                        onClick={prevStep}
-                                        className={`flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-colors ${step === 1
-                                            ? "invisible"
-                                            : "text-slate-600 hover:bg-slate-100"
-                                            }`}
-                                    >
-                                        <ChevronLeft className="w-5 h-5 mr-1" />
-                                        Zpět
-                                    </button>
+                                <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col gap-4">
+                                    {submitError && (
+                                        <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100 mb-2">
+                                            {submitError}
+                                        </div>
+                                    )}
+                                    <div className="flex items-center justify-between">
+                                        <button
+                                            onClick={prevStep}
+                                            disabled={isSubmitting}
+                                            className={`flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-colors ${step === 1 || isSubmitting
+                                                ? "invisible"
+                                                : "text-slate-600 hover:bg-slate-100"
+                                                }`}
+                                        >
+                                            <ChevronLeft className="w-5 h-5 mr-1" />
+                                            Zpět
+                                        </button>
 
-                                    <button
-                                        onClick={nextStep}
-                                        disabled={!canProceed()}
-                                        className={`flex items-center justify-center px-6 py-3 rounded-xl font-medium transition-all ${canProceed()
-                                            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
-                                            : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                                            }`}
-                                    >
-                                        {step === STEPS.length ? "Dokončit" : "Pokračovat"}
-                                        {step < STEPS.length && (
-                                            <ChevronRight className="w-5 h-5 ml-1" />
-                                        )}
-                                    </button>
+                                        <button
+                                            onClick={nextStep}
+                                            disabled={!canProceed() || isSubmitting}
+                                            className={`flex items-center justify-center px-6 py-3 rounded-xl font-medium transition-all ${canProceed() && !isSubmitting
+                                                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
+                                                : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                                }`}
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                                    Odesílám...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {step === STEPS.length ? "Dokončit" : "Pokračovat"}
+                                                    {step < STEPS.length && (
+                                                        <ChevronRight className="w-5 h-5 ml-1" />
+                                                    )}
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -165,7 +236,7 @@ export default function CaregiverForm() {
                         </div>
                     )}
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     );
 }
