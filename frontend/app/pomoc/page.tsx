@@ -57,12 +57,14 @@ export default function CaregiverForm() {
 
         // Determine API URL based on environment
         // NOTE: Zde si změň URL adresy podle potřeby!
-        const isLocalhost = typeof window !== 'undefined' &&
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || (isLocalhost
-            ? 'http://localhost:8001/api/data'
-            : 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/data');
+        let apiUrl = 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/data';
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname.startsWith('192.168.')) {
+                apiUrl = `http://${hostname}:8001/api/data`;
+            }
+        }
+        apiUrl = process.env.NEXT_PUBLIC_API_URL || apiUrl;
 
         try {
             const response = await fetch(apiUrl, {
