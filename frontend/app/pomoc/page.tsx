@@ -17,7 +17,7 @@ import { StepTwo } from "@/components/steps/StepTwo";
 import { StepThree } from "@/components/steps/StepThree";
 import { StepFour } from "@/components/steps/StepFour";
 import { Header } from "@/components/layout/Header";
-import { ResponseModal, ApiResponse } from "@/components/ui/ResponseModal";
+import { ResponseChat, ApiResponse } from "@/components/ui/ResponseChat";
 
 const STEPS = [
     { id: 1, title: "Kdo potřebuje péči?", icon: User },
@@ -33,7 +33,6 @@ export default function CaregiverForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [responseData, setResponseData] = useState<ApiResponse | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const updateData = (fields: Partial<FormData>) => {
         setData((prev) => ({ ...prev, ...fields }));
@@ -89,7 +88,6 @@ export default function CaregiverForm() {
 
             setResponseData(responseData);
             setIsSubmitted(true);
-            setIsModalOpen(true);
         } catch (error) {
             console.error('Chyba při odesílání formuláře:', error);
             setSubmitError('Při odesílání formuláře došlo k chybě. Zkuste to prosím znovu.');
@@ -126,14 +124,21 @@ export default function CaregiverForm() {
         }
     };
 
+    const handleReset = () => {
+        setData(initialData);
+        setStep(1);
+        setIsSubmitted(false);
+        setResponseData(null);
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 selection:bg-indigo-100 selection:text-indigo-900">
             {/* Header */}
-            <Header showStep={true} step={step} isSubmitted={isSubmitted} />
+            <Header showStep={!isSubmitted} step={step} isSubmitted={isSubmitted} />
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto px-4 py-8 md:py-12">
-                <div className="max-w-xl mx-auto w-full">
+                <div className={`mx-auto w-full transition-all duration-500 ease-in-out ${isSubmitted ? 'max-w-4xl' : 'max-w-xl'}`}>
                     {!isSubmitted ? (
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden wrap-break-word">
                             {/* Progress Bar */}
@@ -226,47 +231,13 @@ export default function CaregiverForm() {
                             </div>
                         </div>
                     ) : (
-                        /* Success State */
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12 text-center">
-                            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <CheckCircle2 className="w-10 h-10 text-green-500" />
-                            </div>
-                            <h2 className="text-3xl font-bold text-slate-900 mb-4">
-                                Děkujeme za informace
-                            </h2>
-                            <p className="text-slate-600 text-lg mb-8 max-w-sm mx-auto">
-                                Vaše situace byla úspěšně vyhodnocena. Pokud jste zavřeli detailní přehled, můžete jej znovu otevřít nebo začít s novým formulářem.
-                            </p>
-
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                                <button
-                                    onClick={() => setIsModalOpen(true)}
-                                    className="inline-flex items-center justify-center px-6 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-medium transition-colors"
-                                >
-                                    Zobrazit výsledek
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setData(initialData);
-                                        setStep(1);
-                                        setIsSubmitted(false);
-                                        setResponseData(null);
-                                    }}
-                                    className="inline-flex items-center justify-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium transition-colors shadow-sm"
-                                >
-                                    Vyplnit znovu
-                                </button>
-                            </div>
+                        /* Submited State - Inline Chat */
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <ResponseChat data={responseData} onReset={handleReset} />
                         </div>
                     )}
                 </div>
             </main>
-
-            <ResponseModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                data={responseData}
-            />
         </div>
     );
 }
