@@ -65,3 +65,4 @@ class MatchingBenefitsResponse(BaseModel):
     search_criteria: dict[str, Any]
     matching_benefits: list[BenefitServiceResult]
     questionnaire_data: CaregiverQuestionnaireRequest
+    ai_response: str | None = None

@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import Integer, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.infra.ai.request import call_openrouter_chat
 from src.infra.db.models import BenefitService
 
 
@@ -91,6 +92,23 @@ class QuestionnaireProcessor:
             criteria["vztah"] = data["relationship"]
 
         return criteria
+
+    async def generate_ai_explanation(
+        self,
+        criteria: dict[str, Any],
+        benefits: list[dict[str, Any]],
+    ) -> str:
+        """Generate AI explanation for why certain benefits were matched."""
+
+        result = await call_openrouter_chat(
+            "Jsi asistent pro lidé pečující o své blízké. Na základě těchto kritérií: "
+            + ", ".join([f"{k}: {v}" for k, v in criteria.items()])
+            + " a těchto nalezených dávek: "
+            + ", ".join([benefit["name"] for benefit in benefits])
+            + " vysvětli, proč jsou tyto dávky relevantní pro pečujícího. Uveď konkrétní kritéria, která se shodují s podmínkami"
+        )
+
+        return result
 
 
 class BenefitMatcher:

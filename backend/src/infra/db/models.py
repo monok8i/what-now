@@ -1,8 +1,8 @@
 """SQLAlchemy models for benefits and services database."""
 
-from typing import Any
+from typing import Any, Dict, List
 
-from sqlalchemy import JSON, String, Text
+from sqlalchemy import JSON, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -59,3 +59,26 @@ class BenefitService(Base):
 
     def __repr__(self) -> str:
         return f"<BenefitService(id='{self.id}', name='{self.name}')>"
+
+
+class ExtractedService(Base):
+    # Primary key
+    portal_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    identifier: Mapped[str] = mapped_column(String, nullable=False, index=True)
+
+    # {psc, city_id, street, house_number, orientation_number}
+    addresses: Mapped[List[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    contacts: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
+    phones: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
+    # {first_name, last_name, title_before, title_after, function_period?}
+    persons: Mapped[List[Dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    organizations: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
+    websites: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
+
+    def __repr__(self) -> str:
+        return f"<ExtractedService(portal_id={self.portal_id}, identifier={self.identifier})>"

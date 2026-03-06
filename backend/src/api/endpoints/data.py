@@ -76,6 +76,10 @@ async def search_matching_benefits(
             BenefitServiceResult(**result) for result in formatted_results
         ]
 
+        ai_response = await questionnaire_processor.generate_ai_explanation(
+            criteria, formatted_results
+        )
+
         return MatchingBenefitsResponse(
             message=f"Nalezeno {len(benefit_results)} relevantních dávek a služeb.",
             submission_id=submission_id,
@@ -83,6 +87,7 @@ async def search_matching_benefits(
             search_criteria=criteria,
             matching_benefits=benefit_results,
             questionnaire_data=questionnaire,
+            ai_response=ai_response,
         )
 
     except Exception as e:
