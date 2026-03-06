@@ -58,7 +58,7 @@ export default function CaregiverForm() {
         // Determine API URL based on environment
         // NOTE: Zde si změň URL adresy podle potřeby!
         const apiUrl = process.env.NODE_ENV === 'production'
-            ? 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/submit'
+            ? 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/data'
             : 'http://localhost:8001/api/data';
 
         try {
