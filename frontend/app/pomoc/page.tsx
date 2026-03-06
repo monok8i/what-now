@@ -57,9 +57,14 @@ export default function CaregiverForm() {
 
         // Determine API URL based on environment
         // NOTE: Zde si změň URL adresy podle potřeby!
-        const apiUrl = process.env.NODE_ENV === 'production'
-            ? 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/data'
-            : 'http://localhost:8001/api/data';
+        let apiUrl = 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/data';
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname.startsWith('192.168.')) {
+                apiUrl = `http://${hostname}:8001/api/data`;
+            }
+        }
+        apiUrl = process.env.NEXT_PUBLIC_API_URL || apiUrl;
 
         try {
             const response = await fetch(apiUrl, {
@@ -120,7 +125,7 @@ export default function CaregiverForm() {
             <main className="flex-1 flex flex-col overflow-y-auto px-4 py-8 md:py-12">
                 <div className="max-w-xl mx-auto w-full">
                     {!isSubmitted ? (
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden break-words">
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden wrap-break-word">
                             {/* Progress Bar */}
                             <div className="w-full bg-slate-100 h-1.5 flex">
                                 <div

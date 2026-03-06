@@ -19,7 +19,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center">
         {/* Hero Section */}
         <section id="uvod" className="w-full relative overflow-hidden bg-white border-b border-slate-200 scroll-mt-20">
-          <div className="absolute inset-0 bg-indigo-50/50 [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+          <div className="absolute inset-0 bg-indigo-50/50 mask-[linear-gradient(to_bottom,white,transparent)]" />
 
           <div className="max-w-5xl mx-auto px-4 py-20 md:py-32 relative flex flex-col items-center text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-100/80 text-indigo-800 text-sm font-medium mb-8">
@@ -32,7 +32,7 @@ export default function Home() {
 
             <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight max-w-4xl mb-6">
               Nejste v tom sami.<br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 to-purple-600">
                 Péče o blízké s lehkostí.
               </span>
             </h1>
@@ -80,7 +80,7 @@ export default function Home() {
                 <p className="text-slate-600 leading-relaxed">
                   Skrze interaktivní dotazník zmapujeme vaši situaci: koho se péče týká, jak je na tom dotyčný zdravotně a co nejvíc trápí vás.
                 </p>
-                <div className="absolute top-8 right-8 text-8xl font-black text-slate-50/50 select-none pointer-events-none -z-0">1</div>
+                <div className="absolute top-8 right-8 text-8xl font-black text-slate-50/50 select-none pointer-events-none z-0">1</div>
               </div>
 
               {/* Step 2 */}
@@ -92,7 +92,7 @@ export default function Home() {
                 <p className="text-slate-600 leading-relaxed">
                   Aplikace vyhodnotí data a v případě potřeby se vás asistent doptá na detaily. Umí to empaticky, s ohledem na vaši náladu.
                 </p>
-                <div className="absolute top-8 right-8 text-8xl font-black text-slate-50/50 select-none pointer-events-none -z-0">2</div>
+                <div className="absolute top-8 right-8 text-8xl font-black text-slate-50/50 select-none pointer-events-none z-0">2</div>
               </div>
 
               {/* Step 3 */}
@@ -104,7 +104,7 @@ export default function Home() {
                 <p className="text-slate-600 leading-relaxed">
                   Roztřídíme informace a vygenerujeme na míru šitý manuál: státní příspěvky, seznam pečovatelských služeb v okolí i rady na doma.
                 </p>
-                <div className="absolute top-8 right-8 text-8xl font-black text-slate-50/50 select-none pointer-events-none -z-0">3</div>
+                <div className="absolute top-8 right-8 text-8xl font-black text-slate-50/50 select-none pointer-events-none z-0">3</div>
               </div>
             </div>
           </div>
