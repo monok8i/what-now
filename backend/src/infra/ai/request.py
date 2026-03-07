@@ -13,6 +13,7 @@ from .config import config as ai_config
 
 async def call_openrouter_chat(
     user_message: str,
+    additional_context: str | None = None,
     model_override: str | None = None,
     conversation_history: list[dict[str, str]] | None = None,
     system_prompt: str | None = None,
@@ -102,6 +103,11 @@ async def call_openrouter_chat(
     # 3. Add current user message
     # This is the query that AI should respond to
     messages.append({"role": "user", "content": user_message})
+
+    # 4. Add additional context if provided
+    # This can include any extra information that might be helpful for the AI
+    if additional_context:
+        messages.append({"role": "user", "content": additional_context})
 
     # Payload pro OpenRouter API
     payload = {  # type: ignore

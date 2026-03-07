@@ -18,6 +18,7 @@ import contextlib
 
 from fastapi import APIRouter, WebSocket
 
+from src.infra.ai.prompt import additional_context_from_md
 from src.api.schemas import MatchingBenefitsResponse
 from src.infra.ai.request import call_openrouter_chat
 
@@ -129,13 +130,14 @@ async def chat_endpoint(websocket: WebSocket):
             # We don't need the full history - just the current query
 
             metadata: MatchingBenefitsResponse = websocket.app.state.chat_metadata
-
+            additional_context = additional_context_from_md()
             try:
                 answer = await call_openrouter_chat(
                     f"{metadata.model_dump()}\n{user_message}",
                     conversation_history=conversation_history,  # Pass history for context
                     # system_prompt=MAIN_ASSISTANT_PROMPT,  # Defines AI behavior
                     max_tokens=2048,  # Reasonable limit for response
+                    additional_context=additional_context,
                 )
                 print(f"✅ Got answer from AI: {answer[:100]}...")
             except Exception as e:
