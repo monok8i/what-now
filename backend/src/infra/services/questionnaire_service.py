@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import Integer, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.infra.ai.prompt import create_prompt
 from src.infra.ai.request import call_openrouter_chat
 from src.infra.db.models import BenefitService
 
