@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Скрипт для загрузки данных из output_fixed.json в базу данных.
+Script for loading data from output_fixed.json into the database.
 """
 
 import asyncio
@@ -11,7 +11,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select
 
-# Добавляем путь к backend в sys.path
+# Add backend path to sys.path
 backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
 
@@ -21,29 +21,29 @@ from src.infra.db.models import ExtractedService  # noqa: E402
 
 async def load_data_from_json(json_file_path: str, db_url: str) -> None:
     """
-    Загружает данные из JSON файла в базу данных.
+    Load data from JSON file into the database.
 
     Args:
-        json_file_path: Путь к JSON файлу с данными
-        db_url: URL подключения к базе данных
+        json_file_path: Path to JSON file with data
+        db_url: Database connection URL
     """
-    print(f"Загрузка данных из: {json_file_path}")
+    print(f"Loading data from: {json_file_path}")
 
-    # Читаем JSON файл
+    # Read JSON file
     with open(json_file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     records = data.get("records", [])
     total = len(records)
-    print(f"Найдено {total} записей\n")
+    print(f"Found {total} records\n")
 
-    # Создаем engine и session
+    # Create engine and session
     engine = create_async_engine(db_url, echo=False)
     async_session = async_sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
 
-    # Загружаем данные
+    # Load data
     async with async_session() as session:
         added = 0
         updated = 0
@@ -53,11 +53,11 @@ async def load_data_from_json(json_file_path: str, db_url: str) -> None:
             try:
                 portal_id = record.get("portal_id")
                 if not portal_id:
-                    print(f"⚠️  Запись {i}: нет portal_id, пропускаем")
+                    print(f"⚠️  Record {i}: no portal_id, skipping")
                     errors += 1
                     continue
 
-                # Проверяем существует ли уже
+                # Check if it already exists
                 stmt = select(ExtractedService).where(
                     ExtractedService.portal_id == portal_id
                 )
@@ -65,7 +65,7 @@ async def load_data_from_json(json_file_path: str, db_url: str) -> None:
                 existing = result.scalar_one_or_none()
 
                 if existing:
-                    # Обновляем существующую запись
+                    # Update existing record
                     existing.identifier = record.get("identifier", "")
                     existing.addresses = record.get("addresses", [])
                     existing.contacts = record.get("contacts", [])
@@ -75,7 +75,7 @@ async def load_data_from_json(json_file_path: str, db_url: str) -> None:
                     existing.websites = record.get("websites", [])
                     updated += 1
                 else:
-                    # Создаем новую запись
+                    # Create new record
                     service = ExtractedService(
                         portal_id=portal_id,
                         identifier=record.get("identifier", ""),
@@ -89,65 +89,65 @@ async def load_data_from_json(json_file_path: str, db_url: str) -> None:
                     session.add(service)
                     added += 1
 
-                # Коммитим каждые 100 записей
+                # Commit every 100 records
                 if i % 100 == 0:
                     await session.commit()
                     print(
-                        f"Обработано: {i}/{total} (добавлено: {added}, обновлено: {updated}, ошибок: {errors})"
+                        f"Processed: {i}/{total} (added: {added}, updated: {updated}, errors: {errors})"
                     )
 
             except Exception as e:
                 print(
-                    f"❌ Ошибка при обработке записи {i} (portal_id={record.get('portal_id')}): {e}"
+                    f"❌ Error processing record {i} (portal_id={record.get('portal_id')}): {e}"
                 )
                 errors += 1
                 await session.rollback()
 
-        # Финальный коммит
+        # Final commit
         await session.commit()
 
-    print("\n✅ Загрузка завершена!")
-    print(f"   Добавлено новых: {added}")
-    print(f"   Обновлено: {updated}")
-    print(f"   Ошибок: {errors}")
-    print(f"   Всего обработано: {total}")
+    print("\n✅ Loading completed!")
+    print(f"   New records added: {added}")
+    print(f"   Updated: {updated}")
+    print(f"   Errors: {errors}")
+    print(f"   Total processed: {total}")
 
     await engine.dispose()
 
 
 async def example_queries(db_url: str) -> None:
     """
-    Примеры запросов к загруженным данным.
+    Example queries to loaded data.
     """
     engine = create_async_engine(db_url, echo=False)
     async_session = async_sessionmaker(engine, class_=AsyncSession)
 
     async with async_session() as session:
-        # Общее количество
+        # Total count
         stmt = select(ExtractedService)
         result = await session.execute(stmt)
         services = result.scalars().all()
 
-        print("\n=== Примеры запросов ===")
-        print(f"Всего записей в БД: {len(services)}\n")
+        print("\n=== Example queries ===")
+        print(f"Total records in DB: {len(services)}\n")
 
-        # Первые 3 записи
-        print("Первые 3 записи:")
+        # First 3 records
+        print("First 3 records:")
         for service in services[:3]:
             print(f"  - ID: {service.portal_id}, Identifier: {service.identifier}")
             print(
-                f"    Адресов: {len(service.addresses)}, Контактов: {len(service.contacts)}"
+                f"    Addresses: {len(service.addresses)}, Contacts: {len(service.contacts)}"
             )
             print(
-                f"    Телефонов: {len(service.phones)}, Организаций: {len(service.organizations)}"
+                f"    Phones: {len(service.phones)}, Organizations: {len(service.organizations)}"
             )
 
-        # Записи с email контактами
+        # Records with email contacts
         stmt = select(ExtractedService).where(ExtractedService.contacts != []).limit(5)
         result = await session.execute(stmt)
         services_with_contacts = result.scalars().all()
 
-        print("\nЗаписи с email контактами (первые 5):")
+        print("\nRecords with email contacts (first 5):")
         for service in services_with_contacts:
             print(
                 f"  - ID: {service.portal_id}, Email: {', '.join(service.contacts[:2])}"
@@ -158,9 +158,9 @@ async def example_queries(db_url: str) -> None:
 
 def main():
     """
-    Главная функция.
+    Main function.
     """
-    # Параметры по умолчанию
+    # Default parameters
     json_file = str(Path(__file__).parent / "output_fixed.json")
     db_url = db_config.POSTGRES_DATABASE_URI
 
@@ -170,24 +170,24 @@ def main():
         db_url = sys.argv[2]
 
     print("=" * 60)
-    print("Загрузка данных RPSS в базу данных")
+    print("Loading RPSS data into database")
     print("=" * 60)
-    print(f"JSON файл: {json_file}")
-    print(f"База данных: {db_url}")
+    print(f"JSON file: {json_file}")
+    print(f"Database: {db_url}")
     print("=" * 60 + "\n")
 
     try:
-        # Загружаем данные
+        # Load data
         asyncio.run(load_data_from_json(json_file, db_url))  # type: ignore
 
-        # Показываем примеры
+        # Show examples
         asyncio.run(example_queries(db_url))  # type: ignore
 
     except FileNotFoundError:
-        print(f"❌ Ошибка: файл {json_file} не найден")
+        print(f"❌ Error: file {json_file} not found")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        print(f"❌ Error: {e}")
         import traceback
 
         traceback.print_exc()

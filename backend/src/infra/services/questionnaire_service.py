@@ -119,12 +119,14 @@ Zde jsou nalezené dávky v databázi: {benefits_str}
         criteria_str = ", ".join([f"{k}: {v}" for k, v in criteria.items()])
         benefits_names = ", ".join([benefit["name"] for benefit in benefits])
 
-        prompt = system_prompt.format(criteria_str=criteria_str, benefits_str=benefits_names)
+        prompt = system_prompt.format(
+            criteria_str=criteria_str, benefits_str=benefits_names
+        )
 
         result = await call_openrouter_chat(
             prompt,
             system_prompt="Odpovídej stručně, jasně a v Markdownu přesně podle zadání.",
-            max_tokens=1500
+            max_tokens=1500,
         )
 
         return result

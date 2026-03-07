@@ -1,17 +1,17 @@
 """
-WebSocket endpoint pro real-time chat komunikaci s AI asistentem.
+WebSocket endpoint for real-time chat communication with AI assistant.
 
-Tento modul implementuje hlavní chat logiku aplikace. Přijímá zprávy od uživatele
-přes WebSocket, vyhledává relevantní informace v databázi i na internetu,
-a generuje odpovědi pomocí AI modelů s pamětí konverzace.
+This module implements the main chat logic of the application. It receives messages from users
+via WebSocket, searches for relevant information in the database and on the internet,
+and generates responses using AI models with conversation memory.
 
-Tok zpracování zprávy:
-1. Přijetí zprávy od uživatele přes WebSocket
-2. Optimalizace dotazu pomocí menšího AI modelu (Gemini Flash)
-3. Vyhledání relevantních dokumentů ve vektorové databázi
-4. Doplnění aktuálních informací z internetu (DuckDuckGo)
-5. Generování odpovědi pomocí hlavního AI modelu s kontextem a historií
-6. Odeslání odpovědi zpět klientovi
+Message processing flow:
+1. Receive message from user via WebSocket
+2. Optimize query using smaller AI model (Gemini Flash)
+3. Search relevant documents in vector database
+4. Supplement with current information from the internet (DuckDuckGo)
+5. Generate response using main AI model with context and history
+6. Send response back to client
 """
 
 import contextlib
@@ -21,11 +21,11 @@ from fastapi import APIRouter, WebSocket
 from src.api.schemas import MatchingBenefitsResponse
 from src.infra.ai.request import call_openrouter_chat
 
-# Router pro WebSocket endpointy s prefixem /ws
+# Router for WebSocket endpoints with /ws prefix
 router = APIRouter(prefix="/ws")
 
-# System prompt pro hlavního asistenta
-# Definuje chování AI, styl odpovědí a formátování zdrojů
+# System prompt for main assistant
+# Defines AI behavior, response style and source formatting
 MAIN_ASSISTANT_PROMPT = """Jsi užitečný AI asistent pro vyhledávání a analýzu úředních dokumentů několika měst a obecných informací z internetu.
 
 Tvoje úkoly:
@@ -73,37 +73,37 @@ Uživatelův dotaz: """
 @router.websocket("/chat")
 async def chat_endpoint(websocket: WebSocket):
     """
-    WebSocket endpoint pro interaktivní chat s AI asistentem.
+    WebSocket endpoint for interactive chat with AI assistant.
 
-    Tento endpoint udržuje perzistentní spojení s klientem a zpracovává
-    zprávy v reálném čase. Pro každé WebSocket spojení se udržuje samostatná
-    historie konverzace, která umožňuje kontextové odpovědi.
+    This endpoint maintains a persistent connection with the client and processes
+    messages in real-time. Each WebSocket connection maintains a separate
+    conversation history that enables contextual responses.
 
-    Hlavní funkce:
-    - Příjem a zpracování zpráv od uživatele
-    - Optimalizace dotazů pro lepší vyhledávání
-    - Kombinace dat z databáze a internetu
-    - Generování odpovědí s pamětí konverzace
-    - Automatické trimování historie pro úsporu paměti
+    Main functions:
+    - Receive and process messages from user
+    - Optimize queries for better search
+    - Combine data from database and internet
+    - Generate responses with conversation memory
+    - Automatic history trimming for memory efficiency
 
     Args:
-        websocket: WebSocket spojení s klientem
+        websocket: WebSocket connection with client
 
     Raises:
-        Exception: Jakákoli chyba během zpracování je zachycena,
-                   zalogována a odeslaná klientovi
+        Exception: Any error during processing is caught,
+                   logged and sent to the client
 
     Note:
-        - Historie je omezena na posledních 20 zpráv (10 výměn)
-        - Pro optimalizaci se používá Gemini Flash (rychlý a levný)
-        - Pro odpovědi se používá hlavní model z konfigurace
-        - Vždy se kombinují data z DB a z webu pro lepší pokrytí
+        - History is limited to last 20 messages (10 exchanges)
+        - Gemini Flash is used for optimization (fast and cheap)
+        - Main model from config is used for responses
+        - Always combines data from DB and web for better coverage
     """
-    # Přijmout WebSocket spojení
+    # Accept WebSocket connection
     await websocket.accept()
 
-    # Historie konverzace specifická pro toto WebSocket spojení
-    # Každé spojení má svou vlastní historii pro oddělení různých uživatelů
+    # Conversation history specific to this WebSocket connection
+    # Each connection has its own history to separate different users
     conversation_history: list[dict[str, str]] = (
         websocket.app.state.chat_conversaion_history
     )
@@ -123,28 +123,30 @@ async def chat_endpoint(websocket: WebSocket):
             print(f"📨 Received message: {user_message[:50]}...")
             print(f"📚 Current history size: {len(conversation_history)} messages")
 
-            # KROK 1: Optimalizace vyhledávacího dotazu
-            # Použijeme rychlý Gemini Flash model pro přeformulování dotazu
-            # Tím získáme lepší klíčová slova pro vektorové vyhledávání
-            # Nepotřebujeme celou historii - jen aktuální dotaz
+            # STEP 1: Optimize search query
+            # Use fast Gemini Flash model to reformulate the query
+            # This gives us better keywords for vector search
+            # We don't need the full history - just the current query
 
             metadata: MatchingBenefitsResponse = websocket.app.state.chat_metadata
 
             try:
                 answer = await call_openrouter_chat(
                     f"{metadata.model_dump()}\n{user_message}",
-                    conversation_history=conversation_history,  # Předáme historii pro kontext
-                    # system_prompt=MAIN_ASSISTANT_PROMPT,  # Definuje chování AI
-                    max_tokens=2048,  # Rozumný limit pro odpověď
+                    conversation_history=conversation_history,  # Pass history for context
+                    # system_prompt=MAIN_ASSISTANT_PROMPT,  # Defines AI behavior
+                    max_tokens=2048,  # Reasonable limit for response
                 )
                 print(f"✅ Got answer from AI: {answer[:100]}...")
             except Exception as e:
                 print(f"❌ Error calling AI model: {e}")
-                answer = f"Omlouvám se, došlo k chybě při zpracování dotazu: {str(e)}"
+                answer = (
+                    f"Sorry, an error occurred while processing the query: {str(e)}"
+                )
 
-            # KROK 5: Uložení do historie konverzace
-            # Ukládáme PŮVODNÍ zprávy, ne zprávy s kontextem
-            # To zajišťuje, že historie zůstává čitelná a relevantní
+            # STEP 5: Save to conversation history
+            # Save ORIGINAL messages, not messages with context
+            # This ensures the history remains readable and relevant
             conversation_history.append({"role": "user", "content": user_message})
             conversation_history.append({"role": "assistant", "content": answer})
 
@@ -152,16 +154,16 @@ async def chat_endpoint(websocket: WebSocket):
                 f"💾 Saved to history. New history size: {len(conversation_history)} messages"
             )
 
-            # KROK 6: Omezení velikosti historie
-            # Ponecháme pouze posledních 20 zpráv (10 výměn) aby nepřetekl kontext
-            # Většina AI modelů má limit na počet tokenů v kontextu
+            # STEP 6: Limit history size
+            # Keep only last 20 messages (10 exchanges) to avoid context overflow
+            # Most AI models have a limit on the number of tokens in context
             if len(conversation_history) > 20:
                 conversation_history = conversation_history[-20:]
                 print("✂️ Trimmed history to 20 messages")
 
             websocket.app.state.chat_conversaion_history = conversation_history
 
-            # KROK 7: Odeslání odpovědi klientovi
+            # STEP 7: Send response to client
             print("📤 Sending response via WebSocket...")
             try:
                 await websocket.send_json({"message": answer, "typing": False})
@@ -170,7 +172,7 @@ async def chat_endpoint(websocket: WebSocket):
                 raise
 
     except Exception as e:
-        # Globální exception handler pro WebSocket
+        # Global exception handler for WebSocket
         import traceback
 
         print(f"❌ WebSocket error: {e}")
@@ -178,9 +180,13 @@ async def chat_endpoint(websocket: WebSocket):
 
         with contextlib.suppress():
             await websocket.send_json(
-                {"message": f"Došlo k chybě: {str(e)}", "typing": False, "error": True}
+                {
+                    "message": f"An error occurred: {str(e)}",
+                    "typing": False,
+                    "error": True,
+                }
             )
 
-        # Uzavřeme spojení s error kódem
+        # Close connection with error code
         with contextlib.suppress():
             await websocket.close(code=1011)  # 1011 = Internal error

@@ -82,7 +82,7 @@ async def search_matching_benefits(
         )
 
         result = MatchingBenefitsResponse(
-            message=f"Nalezeno {len(benefit_results)} relevantních dávek a služeb.",
+            message=f"Found {len(benefit_results)} relevant benefits and services.",
             submission_id=submission_id,
             total_matches=len(benefit_results),
             search_criteria=criteria,
@@ -97,7 +97,7 @@ async def search_matching_benefits(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chyba při vyhledávání: {str(e)}",
+            detail=f"Search error: {str(e)}",
         ) from e
 
     return result

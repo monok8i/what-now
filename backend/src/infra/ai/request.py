@@ -1,9 +1,9 @@
 """
-Modul pro volání OpenRouter API pro chat completion.
+Module for calling OpenRouter API for chat completion.
 
-Tento modul poskytuje funkci pro asynchronní komunikaci s OpenRouter API,
-které slouží jako proxy pro různé AI modely (GPT-4, Claude, Gemini, atd.).
-Podporuje konverzační historii a system prompts.
+This module provides a function for asynchronous communication with OpenRouter API,
+which serves as a proxy for various AI models (GPT-4, Claude, Gemini, etc.).
+Supports conversation history and system prompts.
 """
 
 import httpx
@@ -19,88 +19,88 @@ async def call_openrouter_chat(
     max_tokens: int = 4096,
 ) -> str:
     """
-    Volá OpenRouter API s podporou pro konverzační historii.
+    Calls OpenRouter API with support for conversation history.
 
-    OpenRouter je proxy služba, která umožňuje používat různé AI modely
-    (OpenAI GPT, Anthropic Claude, Google Gemini, atd.) přes jednotné API.
-    Tato funkce podporuje:
-    - Různé AI modely (výchozí nebo override)
-    - Konverzační paměť (historie zpráv)
-    - System prompty pro definici chování
-    - Asynchronní volání pro lepší výkon
+    OpenRouter is a proxy service that allows using various AI models
+    (OpenAI GPT, Anthropic Claude, Google Gemini, etc.) through a unified API.
+    This function supports:
+    - Different AI models (default or override)
+    - Conversation memory (message history)
+    - System prompts for behavior definition
+    - Asynchronous calling for better performance
 
     Args:
-        user_message: Aktuální zpráva od uživatele nebo prompt pro AI
-        model_override: Volitelně přepsat výchozí model z konfigurace
-                       Např. "google/gemini-2.5-flash-lite-preview-09-2025"
-                       pro rychlé a levné dotazy
-        conversation_history: Seznam předchozích zpráv ve formátu:
+        user_message: Current message from user or prompt for AI
+        model_override: Optionally override default model from config
+                       E.g. "google/gemini-2.5-flash-lite-preview-09-2025"
+                       for fast and cheap queries
+        conversation_history: List of previous messages in format:
                              [{"role": "user", "content": "..."},
                               {"role": "assistant", "content": "..."}]
-                             Umožňuje AI reagovat v kontextu celé konverzace
-        system_prompt: Volitelný systémový prompt definující chování AI
-                      Např. "Jsi odborný asistent pro právní dokumenty..."
-        max_tokens: Maximální počet tokenů v odpovědi (default: 4096)
-                   Vyšší hodnota = delší odpovědi, ale vyšší cena
+                             Allows AI to respond in context of entire conversation
+        system_prompt: Optional system prompt defining AI behavior
+                      E.g. "You are an expert assistant for legal documents..."
+        max_tokens: Maximum number of tokens in response (default: 4096)
+                   Higher value = longer responses, but higher cost
 
     Returns:
-        str: Textová odpověď od AI modelu
+        str: Text response from AI model
 
     Raises:
-        Nevrací exception, ale chybové hlášky jako string pro robustnost
+        Does not raise exceptions, returns error messages as string for robustness
 
     Example:
-        >>> # Jednoduchý dotaz bez historie
-        >>> odpoved = await call_openrouter_chat("Co je to Python?")
+        >>> # Simple query without history
+        >>> answer = await call_openrouter_chat("What is Python?")
         >>>
-        >>> # Dotaz s historií konverzace
-        >>> historie = [
-        ...     {"role": "user", "content": "Jak se jmenuješ?"},
-        ...     {"role": "assistant", "content": "Jsem AI asistent."}
+        >>> # Query with conversation history
+        >>> history = [
+        ...     {"role": "user", "content": "What's your name?"},
+        ...     {"role": "assistant", "content": "I'm an AI assistant."}
         ... ]
-        >>> odpoved = await call_openrouter_chat(
-        ...     "A co umíš?",
-        ...     conversation_history=historie
+        >>> answer = await call_openrouter_chat(
+        ...     "And what can you do?",
+        ...     conversation_history=history
         ... )
         >>>
-        >>> # Použití rychlého modelu pro optimalizaci
+        >>> # Using fast model for optimization
         >>> query = await call_openrouter_chat(
-        ...     "Přeformuluj: kde najdu stavební povolení?",
+        ...     "Rephrase: where can I find building permit?",
         ...     model_override="google/gemini-2.5-flash-lite-preview-09-2025",
         ...     max_tokens=128
         ... )
     """
-    # Načtení konfigurace
+    # Load configuration
     api_key = ai_config.OPENROUTER_API_KEY
 
-    # Použití výchozího nebo override modelu
+    # Use default or override model
     model = model_override if model_override else ai_config.OPENROUTER_AI_MODEL
 
     # OpenRouter endpoint
     base_url = "https://openrouter.ai/api/v1"
     url = f"{base_url}/chat/completions"
 
-    # HTTP hlavičky pro autorizaci
+    # HTTP headers for authorization
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
-    # Sestavení zpráv v OpenAI formátu
+    # Assemble messages in OpenAI format
     messages: list[dict[str, str]] = []
 
-    # 1. Přidat systémový prompt, pokud je zadán
-    # System prompt definuje chování AI a má nejvyšší prioritu
+    # 1. Add system prompt if provided
+    # System prompt defines AI behavior and has highest priority
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
 
-    # 2. Přidat historii konverzace, pokud existuje
-    # Historie umožňuje AI rozumět kontextu a navazovat na předchozí zprávy
+    # 2. Add conversation history if exists
+    # History allows AI to understand context and build on previous messages
     if conversation_history:
         messages.extend(conversation_history)
 
-    # 3. Přidat aktuální zprávu uživatele
-    # Toto je dotaz, na který má AI odpovědět
+    # 3. Add current user message
+    # This is the query that AI should respond to
     messages.append({"role": "user", "content": user_message})
 
     # Payload pro OpenRouter API
@@ -111,14 +111,14 @@ async def call_openrouter_chat(
     }
 
     try:
-        # Asynchronní HTTP požadavek s timeoutem 60s
+        # Asynchronous HTTP request with 60s timeout
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(url, headers=headers, json=payload)  # type: ignore
-            resp.raise_for_status()  # Vyvolá exception při HTTP chybě
+            resp.raise_for_status()  # Raises exception on HTTP error
             data = resp.json()
 
-            # Parsování odpovědi
-            # Očekávaný formát: { choices: [ { message: { content: "..." } } ] }
+            # Parse response
+            # Expected format: { choices: [ { message: { content: "..." } } ] }
             choices = data.get("choices", [])
             if not choices:
                 return "OpenRouter: no choices returned."
@@ -126,11 +126,11 @@ async def call_openrouter_chat(
             message = choices[0].get("message", {})
             content = message.get("content")
 
-            # Content může být string nebo list částí
+            # Content can be string or list of parts
             if isinstance(content, str):
                 return content
 
-            # Některé providery vrací content jako list objektů
+            # Some providers return content as list of objects
             if isinstance(content, list):
                 parts = []
                 for part in content:  # type: ignore
@@ -144,7 +144,7 @@ async def call_openrouter_chat(
             return "OpenRouter: unexpected response content format."
 
     except httpx.HTTPStatusError as e:
-        # HTTP chyba (4xx, 5xx)
+        # HTTP error (4xx, 5xx)
         try:
             err = e.response.json()
         except Exception:
