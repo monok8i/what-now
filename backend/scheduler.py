@@ -4,6 +4,7 @@ Task scheduler for downloading datasets from external sources.
 This script runs scheduled tasks to download CSV files from:
 - ČSSZ (Czech Social Security Administration)
 - NKOD (National Catalog of Open Data)
+- RPSS (Register of Social Service Providers) - full sync with database
 
 Schedule: Daily at 3:00 AM
 """
@@ -16,6 +17,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler  # type: ignore
 from apscheduler.triggers.cron import CronTrigger  # type: ignore
 
 from src.infra.external_api.parse import cssz, nkod
+from src.infra.external_api.parse.rpss_sync import run_full_sync as rpss_sync
 
 # Add backend directory to path
 backend_dir = Path(__file__).parent
@@ -68,6 +70,21 @@ def run_nkod_download():
         logger.error(f"NKOD download task failed: {e}")
 
 
+def run_rpss_sync():
+    """Synchronize RPSS data (download, process, load to DB)."""
+    try:
+        logger.info("Starting RPSS data synchronization...")
+        import asyncio
+
+        asyncio.run(rpss_sync(cleanup=True))
+        logger.info("RPSS synchronization completed")
+    except Exception as e:
+        logger.error(f"RPSS synchronization failed: {e}")
+        import traceback
+
+        logger.error(traceback.format_exc())
+
+
 def run_all_downloads():
     """Run all download tasks sequentially."""
     logger.info("=" * 60)
@@ -76,6 +93,7 @@ def run_all_downloads():
 
     run_cssz_download()
     run_nkod_download()
+    run_rpss_sync()
 
     logger.info("=" * 60)
     logger.info("All downloads completed")

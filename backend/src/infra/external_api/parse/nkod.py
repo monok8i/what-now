@@ -95,4 +95,19 @@ def download_file(url: str):
             f.write(chunk)
 
 
-print(DOWNLOAD_DIR)
+def main():
+    print("Starting NKOD dataset download...")
+    datasets = find_datasets()
+    print(f"Found {len(datasets)} NKOD datasets")
+
+    for dataset in datasets:
+        try:
+            download_file(dataset["url"])
+        except Exception as e:
+            print(f"Failed to download {dataset['url']}: {e}")
+
+    print("NKOD download completed")
+
+
+if __name__ == "__main__":
+    main()
