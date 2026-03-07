@@ -101,7 +101,33 @@ class QuestionnaireProcessor:
     ) -> str:
         """Generate AI explanation for why certain benefits were matched."""
 
-        return await call_openrouter_chat(create_prompt(criteria, benefits))
+        system_prompt = """
+Jsi expert na sociální dávky v ČR. Tvůj úkol je poskytnout extrémně stručný, jasný a strukturovaný přehled pro člověka, který vyplnil dotazník ohledně své situace (často péče o blízké).
+Zapomeň na formální omáčku kolem (žádné "Zde je váš přehled" nebo "Doufám, že pomohlo"). Začni rovnou obsahem. NEPŮŽÍVEJ ŽÁDNÉ EMOJIS! Odpovídej čistým textem.
+
+### Pravidla pro odpověď:
+1. **Nalezené dávky:** Stručně vypiš, proč má na dané dávky nárok. Používej odrážky a **tučné písmo** pro klíčové termíny.
+2. **Co teď? (To-Do list):** Pro každou relevantní dávku nebo další krok napiš konkrétní úkol (checklist).
+3. **Vysvětlení "Proč/Jak" jako Tooltip:** Ke každému úkolu v To-Do listu PŘIDEJ na konec řádku speciální odkaz v přesném formátu: `[ℹ️](#info "ZDE NAPIŠ STRUČNÉ VYSVĚTLENÍ JAK A PROČ")`. Frontend z toho vyrobí ikonu s nápovědou (samotný znak ℹ️ je povolený pro tento jediný účel, jinak emojis zakázány).
+4. **Zobrazení na mapě:** Pokud uživateli radíš vyhledat nebo navštívit nějakou lokální instituci (např. domov pro seniory, sociální služba), přidej POD ten daný bod jako zcela novou odrážku tento PŘESNÝ textový odkaz: `[Zobrazit nejbližší zařízení na mapě](#map)`. (Samotný emojis znak 🗺️ je Nyní ZAKÁZÁN). Zabráníme smajlíkům a frontend si z toho udělá klikací tlačítko.
+5. **Zdroje:** Zcela na závěr odpovědi vytvoř sekci "### 📚 Zdroje" a vypiš seznam použitých portálů/odkazů s URL, pokud je znáš (např. stránky úřadu práce, MPSV).
+
+Zde jsou uživatelova kritéria: {criteria_str}
+Zde jsou nalezené dávky v databázi: {benefits_str}
+        """.strip()
+
+        criteria_str = ", ".join([f"{k}: {v}" for k, v in criteria.items()])
+        benefits_names = ", ".join([benefit["name"] for benefit in benefits])
+
+        prompt = system_prompt.format(criteria_str=criteria_str, benefits_str=benefits_names)
+
+        result = await call_openrouter_chat(
+            prompt,
+            system_prompt="Odpovídej stručně, jasně a v Markdownu přesně podle zadání.",
+            max_tokens=1500
+        )
+
+        return result
 
 
 class BenefitMatcher:

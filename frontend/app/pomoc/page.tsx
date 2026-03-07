@@ -40,7 +40,9 @@ export default function CaregiverForm() {
 
     const submitForm = async () => {
         setIsSubmitting(true);
+        setIsSubmitted(true);
         setSubmitError(null);
+        setResponseData(null);
 
         // Map internal form state to the required API payload structure
         const payload = {
@@ -87,9 +89,9 @@ export default function CaregiverForm() {
             }
 
             setResponseData(responseData);
-            setIsSubmitted(true);
         } catch (error) {
             console.error('Chyba při odesílání formuláře:', error);
+            setIsSubmitted(false);
             setSubmitError('Při odesílání formuláře došlo k chybě. Zkuste to prosím znovu.');
         } finally {
             setIsSubmitting(false);
@@ -233,7 +235,7 @@ export default function CaregiverForm() {
                     ) : (
                         /* Submited State - Inline Chat */
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <ResponseChat data={responseData} onReset={handleReset} />
+                            <ResponseChat data={responseData} isLoading={isSubmitting} onReset={handleReset} />
                         </div>
                     )}
                 </div>
