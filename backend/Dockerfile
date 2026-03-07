@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock ./
 
 RUN apk add --no-cache git bash
 
-RUN apk add --no-cache gcc python3-dev musl-dev linux-headers
+RUN apk add --no-cache python3-dev musl-dev linux-headers
 
 
 RUN --mount=type=cache,target=/root/.cache/uv \
