@@ -17,3 +17,5 @@ venv.bak/
 .vscode/
 .idea/
 *.swp
+
+test.json

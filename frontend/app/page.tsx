@@ -1,6 +1,6 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
-  HeartPulse,
   ArrowRight,
   ClipboardCheck,
   MessageCircleQuestion,
@@ -10,6 +10,8 @@ import {
   Clock
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
+
+import MapWrapper from "../src/components/MapWrapper";
 
 export default function Home() {
   return (
@@ -163,11 +165,28 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="font-medium text-slate-900 text-sm">Průvodce Péčí AI</div>
-                    <div className="text-slate-500 text-sm">"Zdá se, že řešíte spíše administrativu, mohu rovnou připravit formuláře?"</div>
+                    <div className="text-slate-500 text-sm">&quot;Zdá se, že řešíte spíše administrativu, mohu rovnou připravit formuláře?&quot;</div>
                   </div>
                 </div>
                 <div className="h-4 bg-slate-100 rounded-full w-2/3"></div>
                 <div className="h-4 bg-slate-100 rounded-full w-4/5"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Map Section */}
+        <section id="mapa" className="w-full bg-slate-50 py-24 px-4 border-t border-slate-200 scroll-mt-20">
+          <div className="max-w-6xl mx-auto flex flex-col items-center">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-slate-900 mb-4">Síť pomoci ve vašem okolí</h2>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Máme rozsáhlou databázi tisíců ověřených poskytovatelů sociálních a zdravotních služeb po celé České republice. Zde je malá ukázka (testovací data).
+              </p>
+            </div>
+            <div className="w-full h-[600px] md:h-[700px] rounded-2xl overflow-hidden shadow-xl border border-slate-200 bg-white relative z-0">
+              <div style={{ height: "100%", width: "100%" }}>
+                <MapWrapper />
               </div>
             </div>
           </div>
