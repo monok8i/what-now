@@ -13,8 +13,8 @@ services:
       - "3000:3000"
     restart: unless-stopped
     # environment:
-      # NODE_ENV: production
-      # NEXT_PUBLIC_API_URL: http://localhost:8000/api # Případná vrchní ukázka pro backend
+    # NODE_ENV: production
+    # NEXT_PUBLIC_API_URL: http://localhost:8000/api # Případná vrchní ukázka pro backend
     networks:
       - project-network
 
@@ -55,5 +55,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - project-network
+
+  scheduler:
+    image: backend:latest
+    container_name: backend-scheduler
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: python scheduler.py
+    volumes:
+      - ./backend/scheduler.py:/app/scheduler.py
+      - ./backend/src/:/app/src/
+      - ./datasets:/app/datasets
     networks:
       - project-network

@@ -63,3 +63,27 @@ uvicorn main:create_app --factory --reload --host 0.0.0.0 --port 8001
 ```
 
 API: http://localhost:8001/docs
+
+## Dataset Scheduler
+
+An automated task scheduler downloads datasets daily from external sources:
+
+- **ČSSZ & NKOD**: CSV files (saved to `datasets/`)
+- **RPSS**: Full sync - download → process → load to database
+- **Schedule:** Daily at 3:00 AM + on startup
+- **Logs:** `docker-compose logs -f scheduler`
+
+See [../SCHEDULER.md](../SCHEDULER.md) for details.
+
+## Database Migrations
+
+```bash
+# Create new migration (after model changes)
+alembic revision --autogenerate -m "Description"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback
+alembic downgrade -1
+```
