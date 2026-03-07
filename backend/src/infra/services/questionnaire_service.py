@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import Integer, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.infra.ai.prompt import additional_context_from_md
 from src.infra.ai.request import call_openrouter_chat
 from src.infra.db.models import BenefitService
 
@@ -126,6 +127,7 @@ Zde jsou nalezené dávky v databázi: {benefits_str}
             prompt,
             system_prompt="Odpovídej stručně, jasně a v Markdownu přesně podle zadání.",
             max_tokens=1500,
+            additional_context=additional_context_from_md(),
         )
 
         return result

@@ -13,3 +13,17 @@ def create_prompt(criteria: dict[str, str], benefits: list[dict[str, str]]) -> s
     benefits_str = ", ".join([benefit["name"] for benefit in benefits])
 
     return f"""Jsi asistent pro lidé pečující o své blízké. Na základě těchto kritérií: {criteria_str} a těchto nalezených dávek: {benefits_str} vysvětli, proč jsou tyto dávky relevantní pro pečujícího. Uveď konkrétní kritéria, která se shodují s podmínkami"""
+
+
+def additional_context_from_md() -> str:
+    """
+    Extract additional context from markdown content.
+
+    Args:
+        md_content: Markdown string containing additional information
+    Returns:
+        Extracted context string
+    """
+
+    with open("context/context.md", "r", encoding="utf-8") as f:
+        return f.read()
