@@ -55,6 +55,20 @@ nebo pro internetové zdroje:
 
 Pamatuj si kontext celé konverzace a navazuj na předchozí zprávy."""
 
+# System prompt pro optimalizaci vyhledávacího dotazu
+# Tento menší model přetvoří uživatelovu zprávu na efektivní vyhledávací dotaz
+QUERY_OPTIMIZATION_PROMPT = """Jsi expert na optimalizaci vyhledávacích dotazů pro vektorovou databázi.
+Uživatel ti pošle svůj dotaz a ty z něj vytvoříš co nejlepší, jednoduchý a přesný vyhledávací dotaz.
+
+Pravidla:
+- Extrahuj klíčová slova a hlavní téma
+- Odstraň zbytečná slova
+- Zachovej důležité kontextové informace
+- Výstup musí být krátký a výstižný (max 1-2 věty)
+- Piš česky, pokud je vstup česky
+
+Uživatelův dotaz: """
+
 
 @router.websocket("/chat")
 async def chat_endpoint(websocket: WebSocket):
@@ -90,7 +104,6 @@ async def chat_endpoint(websocket: WebSocket):
 
     # Historie konverzace specifická pro toto WebSocket spojení
     # Každé spojení má svou vlastní historii pro oddělení různých uživatelů
-
     conversation_history: list[dict[str, str]] = (
         websocket.app.state.chat_conversaion_history
     )
@@ -134,6 +147,10 @@ async def chat_endpoint(websocket: WebSocket):
             # To zajišťuje, že historie zůstává čitelná a relevantní
             conversation_history.append({"role": "user", "content": user_message})
             conversation_history.append({"role": "assistant", "content": answer})
+
+            print(
+                f"💾 Saved to history. New history size: {len(conversation_history)} messages"
+            )
 
             # KROK 6: Omezení velikosti historie
             # Ponecháme pouze posledních 20 zpráv (10 výměn) aby nepřetekl kontext
