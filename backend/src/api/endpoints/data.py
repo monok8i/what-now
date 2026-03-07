@@ -2,17 +2,22 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.depends import get_questionnaire_processor
+from src.api.depends import get_map_data_service, get_questionnaire_processor
 from src.api.schemas import (
     BenefitServiceResult,
     CaregiverQuestionnaireRequest,
+    ExtractedServiceResponse,
     MatchingBenefitsResponse,
 )
 from src.infra.db.session import get_db
-from src.infra.services import BenefitMatcher, QuestionnaireProcessor
+from src.infra.services import (
+    BenefitMatcher,
+    MapDataExtractedService,
+    QuestionnaireProcessor,
+)
 
 router = APIRouter(prefix="/data", tags=["data"])
 
@@ -29,6 +34,7 @@ async def health_check():
     status_code=status.HTTP_200_OK,
 )
 async def search_matching_benefits(
+    request: Request,
     questionnaire: CaregiverQuestionnaireRequest,
     db_session: AsyncSession = Depends(get_db),
     questionnaire_processor: QuestionnaireProcessor = Depends(
@@ -76,17 +82,44 @@ async def search_matching_benefits(
             BenefitServiceResult(**result) for result in formatted_results
         ]
 
-        return MatchingBenefitsResponse(
-            message=f"Nalezeno {len(benefit_results)} relevantních dávek a služeb.",
+        ai_response = await questionnaire_processor.generate_ai_explanation(
+            criteria, formatted_results
+        )
+
+        result = MatchingBenefitsResponse(
+            message=f"Found {len(benefit_results)} relevant benefits and services.",
             submission_id=submission_id,
             total_matches=len(benefit_results),
             search_criteria=criteria,
             matching_benefits=benefit_results,
             questionnaire_data=questionnaire,
+            ai_response=ai_response,
         )
+
+        request.app.state.chat_metadata = result
+        request.app.state.chat_conversaion_history = []
 
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Chyba při vyhledávání: {str(e)}",
+            detail=f"Search error: {str(e)}",
         ) from e
+
+    return result
+
+
+@router.get(
+    "/map",
+    status_code=status.HTTP_200_OK,
+    response_model=list[ExtractedServiceResponse],
+)
+async def get_map_data(
+    db_session: AsyncSession = Depends(get_db),
+    map_data_service: MapDataExtractedService = Depends(get_map_data_service),
+):
+    """Example endpoint to return data for map visualization."""
+    # This is a placeholder implementation. In a real application, you would query the database
+    # and return relevant data for the map visualization.
+    map_data = await map_data_service.get_map_data(db_session)
+
+    return map_data

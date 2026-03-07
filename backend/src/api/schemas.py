@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CaregiverQuestionnaireRequest(BaseModel):
@@ -65,3 +65,27 @@ class MatchingBenefitsResponse(BaseModel):
     search_criteria: dict[str, Any]
     matching_benefits: list[BenefitServiceResult]
     questionnaire_data: CaregiverQuestionnaireRequest
+    ai_response: str | None = None
+
+
+class ExtractedServiceResponse(BaseModel):
+    """Response model for extracted service data from RPSS portal."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    portal_id: int = Field(..., description="Unique portal ID")
+    identifier: str = Field(..., description="Service identifier")
+    addresses: list[dict[str, Any]] = Field(  # type: ignore
+        default_factory=list,
+        description="List of addresses (psc, city_id, street, house_number, orientation_number)",
+    )
+    contacts: list[str] = Field(default_factory=list, description="Email contacts")
+    phones: list[str] = Field(default_factory=list, description="Phone numbers")
+    persons: list[dict[str, Any]] = Field(  # type: ignore
+        default_factory=list,
+        description="List of persons (first_name, last_name, title_before, title_after, function_period)",
+    )
+    organizations: list[str] = Field(
+        default_factory=list, description="Organization names"
+    )
+    websites: list[str] = Field(default_factory=list, description="Website URLs")

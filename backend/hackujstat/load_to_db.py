@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Скрипт для завантаження даних у базу даних PostgreSQL використовуючи SQLAlchemy з asyncpg
+Script for loading data into PostgreSQL database using SQLAlchemy with asyncpg
 """
 
 import asyncio
@@ -37,19 +37,19 @@ DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTG
 
 
 def load_json_data(filepath: str) -> list[dict[str, Any]]:
-    """Завантажує дані з JSON файлу."""
+    """Load data from JSON file."""
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 async def create_tables(engine: AsyncEngine):
-    """Створює таблиці в базі даних."""
+    """Create tables in the database."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
 
 async def load_data_to_db(data: list[dict[str, Any]], engine: AsyncEngine):
-    """Завантажує дані у базу даних PostgreSQL використовуючи SQLAlchemy."""
+    """Load data into PostgreSQL database using SQLAlchemy."""
 
     # Create async session factory
     async_session = async_sessionmaker(
@@ -90,72 +90,72 @@ async def load_data_to_db(data: list[dict[str, Any]], engine: AsyncEngine):
                 await session.execute(stmt)
 
             await session.commit()
-            print("✅ Дані успішно завантажено у PostgreSQL")
-            print(f"   Завантажено {len(data)} записів")
+            print("✅ Data successfully loaded into PostgreSQL")
+            print(f"   Loaded {len(data)} records")
 
             # Verify data count
             result = await session.execute(select(BenefitService))
             total_count = len(result.scalars().all())
-            print(f"   Всього записів у базі: {total_count}")
+            print(f"   Total records in database: {total_count}")
 
         except Exception as e:
             await session.rollback()
-            print(f"❌ Помилка при завантаженні даних: {e}")
+            print(f"❌ Error loading data: {e}")
             raise
 
 
 async def main():
-    """Головна функція для завантаження даних."""
+    """Main function for loading data."""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Завантаження соціальних допомог у базу даних PostgreSQL"
+        description="Load social benefits into PostgreSQL database"
     )
     parser.add_argument(
         "--json",
         default="output/social_benefits.json",
-        help="Шлях до JSON файлу (за замовчуванням: output/social_benefits.json)",
+        help="Path to JSON file (default: output/social_benefits.json)",
     )
     parser.add_argument(
         "--create-tables",
         action="store_true",
-        help="Створити таблиці перед завантаженням даних",
+        help="Create tables before loading data",
     )
 
     args = parser.parse_args()
 
-    # Завантажуємо дані з JSON
+    # Load data from JSON
     json_path = Path(__file__).parent / args.json
     if not json_path.exists():
-        print(f"❌ JSON файл не знайдено: {json_path}")
-        print(f"   Поточна директорія: {Path.cwd()}")
+        print(f"❌ JSON file not found: {json_path}")
+        print(f"   Current directory: {Path.cwd()}")
         return
 
     data = load_json_data(str(json_path))
-    print(f"📊 Завантажено {len(data)} записів з {json_path}")
+    print(f"📊 Loaded {len(data)} records from {json_path}")
 
-    # Створюємо підключення до бази даних
+    # Create database connection
     print(
-        f"🔌 Підключення до PostgreSQL: {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+        f"🔌 Connecting to PostgreSQL: {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
     )
     engine = create_async_engine(DATABASE_URL, echo=False)
 
     try:
         # Create tables if requested
         if args.create_tables:
-            print("📋 Створення таблиць...")
+            print("📋 Creating tables...")
             await create_tables(engine)
 
-        # Завантажуємо дані
+        # Load data
         await load_data_to_db(data, engine)
 
     except Exception as e:
-        print(f"❌ Помилка: {e}")
+        print(f"❌ Error: {e}")
         raise
     finally:
         await engine.dispose()
 
-    print("\n✨ Завершено!")
+    print("\n✨ Completed!")
 
 
 if __name__ == "__main__":
