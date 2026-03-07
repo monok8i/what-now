@@ -5,14 +5,19 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.depends import get_questionnaire_processor
+from src.api.depends import get_map_data_service, get_questionnaire_processor
 from src.api.schemas import (
     BenefitServiceResult,
     CaregiverQuestionnaireRequest,
+    ExtractedServiceResponse,
     MatchingBenefitsResponse,
 )
 from src.infra.db.session import get_db
-from src.infra.services import BenefitMatcher, QuestionnaireProcessor
+from src.infra.services import (
+    BenefitMatcher,
+    MapDataExtractedService,
+    QuestionnaireProcessor,
+)
 
 router = APIRouter(prefix="/data", tags=["data"])
 
@@ -101,3 +106,20 @@ async def search_matching_benefits(
         ) from e
 
     return result
+
+
+@router.get(
+    "/map",
+    status_code=status.HTTP_200_OK,
+    response_model=list[ExtractedServiceResponse],
+)
+async def get_map_data(
+    db_session: AsyncSession = Depends(get_db),
+    map_data_service: MapDataExtractedService = Depends(get_map_data_service),
+):
+    """Example endpoint to return data for map visualization."""
+    # This is a placeholder implementation. In a real application, you would query the database
+    # and return relevant data for the map visualization.
+    map_data = await map_data_service.get_map_data(db_session)
+
+    return map_data
