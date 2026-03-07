@@ -2,11 +2,85 @@
 """
 Скрипт для извлечения только необходимых полей из RPSS JSON файла.
 Извлекает: адрес (psc, город, улица, номер дома), контакты, телефоны, имена людей, названия организаций, веб-сайты
+Добавляет координаты (долготу и широту) для каждого адреса через RUIAN API.
 """
 
 import json
 import sys
-from typing import Any, Dict, List, Set
+import time
+import requests
+from typing import Any, Dict, List, Set, Optional, Tuple
+
+
+RUIAN_API_URL = (
+    "https://ags.cuzk.cz/arcgis/rest/services/RUIAN/"
+    "Vyhledavaci_sluzba_nad_daty_RUIAN/MapServer/1/query"
+)
+BATCH_SIZE = 100
+
+
+def fetch_coordinates_batch(codes: List[int]) -> Dict[int, Tuple[float, float]]:
+    """
+    Получает координаты (lon, lat) для списка kodAdresnihoMista через CUZK ArcGIS REST API.
+    Возвращает словарь {kod: (longitude, latitude)}.
+    """
+    result: Dict[int, Tuple[float, float]] = {}
+    codes_str = ",".join(str(c) for c in codes)
+    params = {
+        "where": f"Kod IN ({codes_str})",
+        "outFields": "Kod",
+        "outSR": "4326",
+        "f": "json",
+    }
+    try:
+        response = requests.get(RUIAN_API_URL, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        for feature in data.get("features", []):
+            kod = feature["attributes"]["kod"]
+            geom = feature["geometry"]
+            result[kod] = (geom["x"], geom["y"])
+    except Exception as e:
+        print(f"Error fetching coordinates batch: {e}")
+    return result
+
+
+def fetch_all_coordinates(codes: Set[int]) -> Dict[int, Tuple[float, float]]:
+    """
+    Получает координаты для всех уникальных kodAdresnihoMista пакетами.
+    """
+    all_coords: Dict[int, Tuple[float, float]] = {}
+    code_list = list(codes)
+    total = len(code_list)
+    for i in range(0, total, BATCH_SIZE):
+        batch = code_list[i : i + BATCH_SIZE]
+        print(f"Fetching coordinates: {i}/{total} ...", flush=True)
+        coords = fetch_coordinates_batch(batch)
+        all_coords.update(coords)
+        if i + BATCH_SIZE < total:
+            time.sleep(0.3)
+    print(f"Fetched coordinates for {len(all_coords)}/{total} addresses")
+    return all_coords
+
+
+def collect_all_address_codes(data: Any) -> Set[int]:
+    """
+    Рекурсивно собирает все уникальные kodAdresnihoMista из данных.
+    """
+    codes: Set[int] = set()
+
+    def _walk(obj: Any) -> None:
+        if isinstance(obj, dict):
+            if "kodAdresnihoMista" in obj and obj["kodAdresnihoMista"]:
+                codes.add(int(obj["kodAdresnihoMista"]))
+            for v in obj.values():
+                _walk(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                _walk(item)
+
+    _walk(data)
+    return codes
 
 
 def extract_from_nested(obj: Any, key: str, results: Set[Any]) -> None:
@@ -37,62 +111,67 @@ def extract_from_nested(obj: Any, key: str, results: Set[Any]) -> None:
             extract_from_nested(item, key, results)
 
 
-def extract_addresses(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def extract_addresses(
+    data: Dict[str, Any],
+    coord_cache: Dict[int, Tuple[float, float]],
+) -> List[Dict[str, Any]]:
     """
-    Извлекает все адреса (psc, город, улица, номер дома).
+    Извлекает все адреса (psc, город, улица, номер дома) с координатами.
     """
     addresses: List[Dict[str, Any]] = []
 
-    # Ищем адреса в разных местах
     def find_addresses(obj: Any) -> None:
         if isinstance(obj, dict):
-            # Если это объект адреса
             if "psc" in obj or "obec" in obj:
                 addr: Dict[str, Any] = {}
                 if "psc" in obj and obj["psc"]:
                     addr["psc"] = obj["psc"]
 
-                # Обрабатываем obec
                 if "obec" in obj and obj["obec"]:
-                    obec: Any = obj["obec"]  # type: ignore[misc]
+                    obec: Any = obj["obec"]
                     if isinstance(obec, dict):
                         if "nazev" in obec:
                             addr["city"] = obec["nazev"]
                         elif "id" in obec:
-                            # Извлекаем ID из строки "Obec/554499"
-                            city_id: Any = obec["id"]  # type: ignore[misc]
+                            city_id: Any = obec["id"]
                             if isinstance(city_id, str) and "/" in city_id:
                                 addr["city_id"] = city_id.split("/")[-1]
                             else:
-                                addr["city_id"] = str(city_id)  # type: ignore[arg-type] # type: ignore[arg-type]
+                                addr["city_id"] = str(city_id)
                     elif isinstance(obec, str):
                         addr["city"] = obec
 
-                # Добавляем улицу
                 if "ulice" in obj and obj["ulice"]:
-                    ulice: Any = obj["ulice"]  # type: ignore[misc]
+                    ulice: Any = obj["ulice"]
                     if isinstance(ulice, dict) and "nazev" in ulice:
                         addr["street"] = ulice["nazev"]
                     elif isinstance(ulice, str):
                         addr["street"] = ulice
 
-                # Добавляем номер дома
                 if "cisloDomovni" in obj and obj["cisloDomovni"]:
-                    addr["house_number"] = str(obj["cisloDomovni"])  # type: ignore[arg-type]
+                    addr["house_number"] = str(obj["cisloDomovni"])
 
-                # Добавляем ориентационный номер
                 if "cisloOrientacni" in obj and obj["cisloOrientacni"]:
-                    addr["orientation_number"] = str(obj["cisloOrientacni"])  # type: ignore[arg-type]
+                    addr["orientation_number"] = str(obj["cisloOrientacni"])
+
+                # Координаты по kodAdresnihoMista
+                kod = obj.get("kodAdresnihoMista")
+                if kod and int(kod) in coord_cache:
+                    lon, lat = coord_cache[int(kod)]
+                    addr["longitude"] = lon
+                    addr["latitude"] = lat
+                else:
+                    addr["longitude"] = None
+                    addr["latitude"] = None
 
                 if addr:
                     addresses.append(addr)
 
-            # Рекурсивно обходим
-            for v in obj.values():  # type: ignore[misc]
+            for v in obj.values():
                 find_addresses(v)
 
         elif isinstance(obj, list):
-            for item in obj:  # type: ignore[misc]
+            for item in obj:
                 find_addresses(item)
 
     find_addresses(data)
@@ -285,12 +364,15 @@ def remove_duplicates(items: List[Any]) -> List[Any]:
     return unique
 
 
-def extract_record(record: Dict[str, Any]) -> Dict[str, Any]:
+def extract_record(
+    record: Dict[str, Any],
+    coord_cache: Dict[int, Tuple[float, float]],
+) -> Dict[str, Any]:
     """
     Извлекает все необходимые поля из одной записи.
     """
     extracted = {
-        "addresses": remove_duplicates(extract_addresses(record)),
+        "addresses": remove_duplicates(extract_addresses(record, coord_cache)),
         "contacts": remove_duplicates(extract_contacts(record)),
         "phones": remove_duplicates(extract_phones(record)),
         "persons": remove_duplicates(extract_persons(record)),
@@ -328,13 +410,19 @@ def process_json_file(input_file: str, output_file: str) -> None:
         print("Ошибка: неизвестная структура JSON")
         sys.exit(1)
 
+    # Собираем все kodAdresnihoMista и достаем координаты пакетами
+    print("Собираем адресные коды...")
+    all_codes = collect_all_address_codes(records)
+    print(f"Уникальных адресных кодов: {len(all_codes)}")
+    coord_cache = fetch_all_coordinates(all_codes)
+
     # Обрабатываем записи
     extracted_records: List[Dict[str, Any]] = []
     for i, record in enumerate(records, 1):
         if i % 100 == 0:
             print(f"Обработано: {i}/{len(records)}")
 
-        extracted = extract_record(record)
+        extracted = extract_record(record, coord_cache)
         extracted_records.append(extracted)
 
     # Сохраняем результат
