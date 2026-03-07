@@ -13,6 +13,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Datasets
+datasets/
+*.csv
+
 # Editor
 .vscode/
 .idea/
