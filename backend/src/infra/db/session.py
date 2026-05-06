@@ -6,7 +6,6 @@ from .config import config
 
 engine = create_async_engine(config.POSTGRES_DATABASE_URI, echo=True)  # type: ignore
 
-# Create async session factory
 AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )

@@ -14,7 +14,6 @@ RUN apk add --no-cache git bash
 
 RUN apk add --no-cache python3-dev musl-dev linux-headers
 
-
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-project --no-dev
 
@@ -37,7 +36,7 @@ COPY --from=builder /app /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-EXPOSE 8001
+EXPOSE 8000
 
 RUN rm -rf /app/.venv/share/man \
     /app/.venv/lib/python*/test \

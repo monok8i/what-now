@@ -1,22 +1,22 @@
 networks:
-  project-network:
-    name: project-network
+  what-now-network:
+    name: what-now-network
     driver: bridge
 
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: hackujstat-frontend
-    ports:
-      - "3000:3000"
-    restart: unless-stopped
-    # environment:
-    # NODE_ENV: production
-    # NEXT_PUBLIC_API_URL: http://localhost:8000/api # Případná vrchní ukázka pro backend
-    networks:
-      - project-network
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: hackujstat-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   restart: unless-stopped
+  #   # environment:
+  #   # NODE_ENV: production
+  #   # NEXT_PUBLIC_API_URL: http://localhost:8000/api # Případná vrchní ukázka pro backend
+  #   networks:
+  #     - project-network
 
   backend:
     image: backend:latest
@@ -26,18 +26,20 @@ services:
       dockerfile: Dockerfile
     restart: no
     env_file:
-      - ./backend/.env
-    environment:
-      - POSTGRES_HOST=backend-db
+      - .env
+
     ports:
-      - "8001:8001"
+      - "${API_PORT}:${API_PORT}"
+
     volumes:
       - ./backend/src/:/app/src/
       - ./backend/main.py:/app/main.py
       - ./backend/alembic.ini:/app/alembic.ini
       - ./backend/migrations/:/app/migrations/
+
     networks:
-      - project-network
+      - what-now-network
+
     depends_on:
       backend-db:
         condition: service_healthy
@@ -47,28 +49,16 @@ services:
     container_name: backend-db
     restart: no
     env_file:
-      - ./backend/.env
+      - .env
+
     ports:
-      - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready --username=${POSTGRES_USER:-backend} --dbname=${POSTGRES_DB:-hackujstat}" ]
+      test: [ "CMD-SHELL", "pg_isready --username=${POSTGRES_USER} --dbname=${POSTGRES_DB}" ]
       interval: 5s
       timeout: 3s
       retries: 5
-    networks:
-      - project-network
 
-  scheduler:
-    image: backend:latest
-    container_name: backend-scheduler
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    command: python scheduler.py
-    volumes:
-      - ./backend/scheduler.py:/app/scheduler.py
-      - ./backend/src/:/app/src/
-      - ./datasets:/app/datasets
     networks:
-      - project-network
+      - what-now-network
