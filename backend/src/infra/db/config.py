@@ -76,6 +76,3 @@ class Config(BaseEnvConfig):
             pool_timeout=info.data.get("POSTGRES_POOL_TIMEOUT"),
             pool_pre_ping=info.data.get("POSTGRES_POOL_PRE_PING"),
         )
-
-
-config = Config()

@@ -9,7 +9,7 @@ from src.utils.logging.setup import setup_logging, stop_logging
 
 
 async def main() -> None:
-    """Main function to start the Nightcore Dashboard Backend."""
+    """Main function to start API."""
     # Set up logging
     logger = setup_logging()
     # Create API Server
@@ -34,7 +34,7 @@ async def main() -> None:
         logger.error(f"An error occurred: {e}")
     finally:
         # Cleanup resources
-        logger.info("Nighcore Auth Service has been stopped.")
+        logger.info("API has been stopped.")
         stop_logging()
 
 

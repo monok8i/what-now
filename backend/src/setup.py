@@ -11,7 +11,7 @@ from src.config._global import config
 def create_fastapi() -> FastAPI:
     """Create and return an instance of the FastAPI application."""
 
-    app = FastAPI(title="Nightcore Auth Service", lifespan=lifespan)
+    app = FastAPI(title="What Now API", lifespan=lifespan)
     app.state.project_config = config
 
     app.include_router(api_router)

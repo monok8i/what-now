@@ -1,20 +1,25 @@
 """Database session management."""
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-
-from .config import config
-
-engine = create_async_engine(config.POSTGRES_DATABASE_URI, echo=True)  # type: ignore
-
-AsyncSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
 )
 
 
-async def get_db():
+async def get_async_session(database_engine: AsyncEngine):
     """Get async database session."""
-    async with AsyncSessionLocal() as session:
+
+    _local_session = async_sessionmaker(
+        database_engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with _local_session() as session:
         try:
             yield session
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            raise e
         finally:
             await session.close()

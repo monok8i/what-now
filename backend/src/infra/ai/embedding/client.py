@@ -1,0 +1,73 @@
+"""Embedding client."""
+
+from typing import List, Sequence
+
+import httpx
+
+from src.infra.ai.exceptions import EmbeddingError
+
+
+class OpenRouterEmbeddingClient:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        base_url: str = "https://openrouter.ai/api/v1/embeddings",
+        timeout: float = 30.0,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self._api_key = api_key
+        self._base_url = base_url
+        self._timeout = timeout
+        self._client = client
+
+    async def generate_embeddings(
+        self,
+        texts: Sequence[str],
+        *,
+        model_name: str = "openai/text-embedding-3-small",
+    ) -> List[List[float]]:
+        if not texts:
+            return []
+
+        cleaned_texts = [text.replace("\n", " ") for text in texts]
+
+        payload: dict[str, str | list[str]] = {
+            "model": model_name,
+            "input": cleaned_texts,
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            if self._client:
+                response = await self._client.post(
+                    self._base_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=self._timeout,
+                )
+            else:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        self._base_url,
+                        headers=headers,
+                        json=payload,
+                        timeout=self._timeout,
+                    )
+
+            response.raise_for_status()
+            data = response.json()
+
+            sorted_data = sorted(data["data"], key=lambda x: x["index"])
+            return [item["embedding"] for item in sorted_data]
+
+        except httpx.HTTPStatusError as e:
+            raise EmbeddingError(
+                f"OpenRouter API HTTP error {e.response.status_code}: {e.response.text}"
+            ) from e
+        except Exception as e:
+            raise EmbeddingError(f"OpenRouter API batch embedding error: {e}") from e

@@ -45,7 +45,7 @@ services:
         condition: service_healthy
 
   backend-db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:0.6.0-pg16
     container_name: backend-db
     restart: no
     env_file:

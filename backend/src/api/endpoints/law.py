@@ -2,6 +2,9 @@
 
 from fastapi import APIRouter, File, UploadFile
 
+from src.api.schemas import LawUploadResponse
+from src.api.depends import DocumentProcessorServiceDependency
+
 
 router = APIRouter(prefix="/laws", tags=["laws"])
 
@@ -12,7 +15,15 @@ async def health_check():
     return {"status": "healthy", "service": "laws"}
 
 
-@router.post("/")
-async def upload_law(file: UploadFile = File(...)):
+@router.post("/", response_model=LawUploadResponse)
+async def upload_law(
+    processor: DocumentProcessorServiceDependency,
+    file: UploadFile = File(...),
+):
     """Upload a file and return its filename."""
-    return {"filename": file.filename}
+
+    file_content = await file.read()
+
+    total_document = await processor.process_document(file_content)
+
+    return LawUploadResponse(success=True, total_chunks=total_document)

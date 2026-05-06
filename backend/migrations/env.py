@@ -8,8 +8,8 @@ from logging.config import fileConfig
 
 from alembic import context
 
-from src.infra.db.config import config as db_config
-from infra.db.models.law_chunk import Base
+from src.config._global import config as project_config
+from src.infra.db.models import Base
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -35,7 +35,7 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-db_url = db_config.POSTGRES_DATABASE_URI
+db_url = project_config.db.POSTGRES_DATABASE_URI
 
 
 def run_migrations_offline() -> None:
