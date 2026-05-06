@@ -1,7 +1,7 @@
 ### ───────────────────────────────────────────────
 ### Builder stage
 ### ───────────────────────────────────────────────
-FROM ghcr.io/astral-sh/uv:python3.13-alpine AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm AS builder
 
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 ENV UV_PYTHON_DOWNLOADS=0
@@ -10,9 +10,9 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 
-RUN apk add --no-cache git bash
-
-RUN apk add --no-cache python3-dev musl-dev linux-headers
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git bash build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -29,7 +29,7 @@ RUN rm -f pyproject.toml uv.lock .python-version \
 ### ───────────────────────────────────────────────
 ### Runtime stage
 ### ───────────────────────────────────────────────
-FROM python:3.13-alpine AS runtime
+FROM python:3.13-slim-bookworm AS runtime
 
 WORKDIR /app
 
@@ -38,6 +38,10 @@ COPY --from=builder /app /app
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8001
+
+RUN apt-get update \
+    && python -m playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN rm -rf /app/.venv/share/man \
     /app/.venv/lib/python*/test \
