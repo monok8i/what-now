@@ -1,4 +1,4 @@
-"""SQLAlchemy models for benefits and services database."""
+"""SQLAlchemy model for law chunk records and their embeddings."""
 
 from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -9,6 +9,19 @@ from src.infra.db.models.base import Base
 
 
 class LawChunk(IdIntegerMixin, Base):
+    """Persist a single normalized law fragment and its vector embedding.
+
+    Attributes:
+        id: Auto-incrementing primary key inherited from ``IdIntegerMixin``.
+        document_number: Official document identifier of the source law.
+        year: Publication year of the source document.
+        fragment_id: Unique identifier of the source fragment.
+        depth: Fragment depth in the source hierarchy.
+        fragment_type: Fragment type label from the source dataset.
+        clean_text: Plain-text content extracted from the source HTML.
+        embedding: Optional 1536-dimensional vector used for semantic search.
+    """
+
     # Document metadata
     document_number: Mapped[str] = mapped_column(
         String(100), index=True, nullable=False

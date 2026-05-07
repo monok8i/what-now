@@ -1,4 +1,8 @@
-"""Main entry point for the Nightcore Dashboard Backend."""
+"""Application entry point for the FastAPI backend.
+
+This module bootstraps the server, installs signal handlers, and manages
+startup and shutdown for the async runtime.
+"""
 
 import asyncio
 import contextlib
@@ -9,7 +13,12 @@ from src.utils.logging.setup import setup_logging, stop_logging
 
 
 async def main() -> None:
-    """Main function to start API."""
+    """Start the API server and keep it running until shutdown.
+
+    Returns:
+        Nothing. The coroutine runs the server until a shutdown signal is
+        received.
+    """
     # Set up logging
     logger = setup_logging()
     # Create API Server
@@ -19,6 +28,8 @@ async def main() -> None:
     loop = asyncio.get_running_loop()
 
     def shutdown() -> None:
+        """Request a graceful server shutdown from the signal handler."""
+
         logger.info("Shutdown signal received. Stopping the server...")
         server.should_exit = True
 

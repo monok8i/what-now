@@ -1,4 +1,8 @@
-"""Global configuration for the application."""
+"""Global configuration container for the application.
+
+This module lazily instantiates API, AI, and database configuration objects and
+exposes them through a single shared ``config`` instance.
+"""
 
 from functools import cached_property
 
@@ -8,21 +12,37 @@ from src.api.config import Config as APIConfig
 
 
 class Config:
-    """Global configuration class for the application."""
+    """Aggregate access to all application configuration groups.
+
+    The properties on this class lazily construct the underlying configuration
+    models so the rest of the application can depend on one shared entry point.
+    """
 
     @cached_property
     def api(self) -> APIConfig:
-        """API-related configuration."""
+        """Return the configuration used by the HTTP API server.
+
+        Returns:
+            API configuration object.
+        """
         return APIConfig()  # type: ignore
 
     @cached_property
     def ai(self) -> AIConfig:
-        """AI-related configuration."""
+        """Return the configuration used by the AI integration layer.
+
+        Returns:
+            AI configuration object.
+        """
         return AIConfig()  # type: ignore
 
     @cached_property
     def db(self) -> DBConfig:
-        """Database-related configuration."""
+        """Return the configuration used by the PostgreSQL layer.
+
+        Returns:
+            Database configuration object.
+        """
         return DBConfig()  # type: ignore
 
 

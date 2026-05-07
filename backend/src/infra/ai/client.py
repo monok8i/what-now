@@ -1,15 +1,16 @@
-"""
-Klient pro komunikaci s OpenAI/OpenRouter API.
-
-Tento modul poskytuje inicializované instance klientů pro:
-- OpenAI API (chat completion, embeddings)
-- OpenRouter API (proxy pro různé AI modely)
-
-Klíče jsou načítány z globální konfigurace.
-"""
+"""Factories for OpenAI-compatible async clients."""
 
 from openai import AsyncOpenAI
 
 
 def get_async_openai_client(api_key: str) -> AsyncOpenAI:
+    """Create an authenticated async OpenAI client.
+
+    Args:
+        api_key: Secret key used to authenticate against the OpenAI API.
+
+    Returns:
+        Configured ``AsyncOpenAI`` client instance.
+    """
+
     return AsyncOpenAI(api_key=api_key)

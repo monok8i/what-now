@@ -1,4 +1,4 @@
-"""Setup logging utilities for the application."""
+"""Application logging bootstrap and shutdown helpers."""
 
 import logging
 import sys
@@ -13,7 +13,14 @@ _listener: QueueListener | None = None
 
 
 def setup_logging() -> logging.Logger:
-    """Set up and configure logging for the entire application."""
+    """Configure root logging, console output, and queue-based dispatch.
+
+    Returns:
+        The configured root logger.
+
+    The root logger is wired through a queue listener so log emission stays
+    consistent even when multiple application components log concurrently.
+    """
     handlers: list[Handler] = []
 
     root_logger = logging.getLogger()
@@ -49,6 +56,10 @@ def setup_logging() -> logging.Logger:
 
 
 def stop_logging():
-    """Stop the logging QueueListener and flush pending records."""
+    """Stop the logging listener and flush pending log records.
+
+    The helper is safe to call multiple times and will do nothing if the
+    listener has not been started.
+    """
 
     _listener.stop() if _listener else None

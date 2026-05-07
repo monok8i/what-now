@@ -1,4 +1,4 @@
-"""Setup module for creating and configuring the FastAPI bot instance."""
+"""Application setup helpers for building the FastAPI server."""
 
 import uvicorn
 from fastapi import FastAPI
@@ -9,7 +9,11 @@ from src.config._global import config
 
 
 def create_fastapi() -> FastAPI:
-    """Create and return an instance of the FastAPI application."""
+    """Create the FastAPI application and register shared state and routers.
+
+    Returns:
+        Configured FastAPI application instance.
+    """
 
     app = FastAPI(title="What Now API", lifespan=lifespan)
     app.state.project_config = config
@@ -20,7 +24,11 @@ def create_fastapi() -> FastAPI:
 
 
 def create_api_server() -> uvicorn.Server:
-    """Create the uvicorn server for the FastAPI application."""
+    """Build the Uvicorn server wrapper around the FastAPI application.
+
+    Returns:
+        Configured Uvicorn server instance.
+    """
 
     app = create_fastapi()
 
@@ -35,12 +43,20 @@ def create_api_server() -> uvicorn.Server:
 
 
 async def run_fastapi(server: uvicorn.Server) -> None:
-    """Run the FastAPI application in the current event loop."""
+    """Run the FastAPI application in the current event loop.
+
+    Args:
+        server: Configured Uvicorn server instance.
+    """
 
     await server.serve()
 
 
 def stop_fastapi(server: uvicorn.Server) -> None:
-    """Gracefully stop the FastAPI server."""
+    """Request a graceful shutdown of the FastAPI server.
+
+    Args:
+        server: Configured Uvicorn server instance.
+    """
 
     server.should_exit = True

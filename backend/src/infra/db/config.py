@@ -1,4 +1,8 @@
-"""Defines the Config class for database environment settings."""
+"""Database configuration and engine assembly.
+
+The settings in this module read database environment variables and build the
+async SQLAlchemy engine used by the application.
+"""
 
 from pydantic import AliasChoices, Field, PostgresDsn, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
@@ -8,6 +12,24 @@ from src.config.env import BaseEnvConfig
 
 
 class Config(BaseEnvConfig):
+    """Database-related environment settings and derived runtime objects.
+
+    Attributes:
+        POSTGRES_USER: Database username.
+        POSTGRES_PASSWORD: Database password.
+        POSTGRES_HOST: Database host name.
+        POSTGRES_PORT: Database port.
+        POSTGRES_DB: Database name.
+        POSTGRES_DATABASE_URI: Full async connection URI.
+        POSTGRES_ECHO: Whether SQLAlchemy should echo SQL statements.
+        POSTGRES_ECHO_POOL: Whether SQLAlchemy should echo pool events.
+        POSTGRES_POOL_MAX_OVERFLOW: Maximum overflow connections in the pool.
+        POSTGRES_POOL_SIZE: Base size of the connection pool.
+        POSTGRES_POOL_TIMEOUT: Pool wait timeout in seconds.
+        POSTGRES_POOL_PRE_PING: Whether to validate connections before use.
+        ENGINE: Lazily created async SQLAlchemy engine.
+    """
+
     POSTGRES_USER: str | None = Field(
         default=None, validation_alias=AliasChoices("POSTGRES_USER", "PGUSER")
     )
@@ -47,6 +69,16 @@ class Config(BaseEnvConfig):
     @field_validator("POSTGRES_DATABASE_URI", mode="before")
     @classmethod
     def _assemble_db_connection(cls, v: str | None, info: FieldValidationInfo) -> str:
+        """Build a PostgreSQL async DSN when a full URI is not provided.
+
+        Args:
+            v: Pre-existing database URI, if one was provided.
+            info: Pydantic field validation context.
+
+        Returns:
+            Resolved async PostgreSQL connection string.
+        """
+
         if isinstance(v, str):
             return v
         return str(
@@ -65,6 +97,16 @@ class Config(BaseEnvConfig):
     def _assemble_db_engine(
         cls, v: AsyncEngine | None, info: FieldValidationInfo
     ) -> AsyncEngine:
+        """Create the async SQLAlchemy engine from the resolved settings.
+
+        Args:
+            v: Pre-existing async engine, if one was provided.
+            info: Pydantic field validation context.
+
+        Returns:
+            Configured async SQLAlchemy engine.
+        """
+
         if isinstance(v, AsyncEngine):
             return v
         return create_async_engine(

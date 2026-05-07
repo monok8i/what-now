@@ -1,4 +1,4 @@
-"""Embedding client."""
+"""OpenRouter embedding client used for semantic search."""
 
 from typing import List, Sequence
 
@@ -8,6 +8,15 @@ from src.infra.ai.exceptions import EmbeddingError
 
 
 class OpenRouterEmbeddingClient:
+    """Generate embeddings through the OpenRouter embeddings endpoint.
+
+    Attributes:
+        _api_key: Authentication token used for OpenRouter requests.
+        _base_url: Embedding endpoint URL.
+        _timeout: Request timeout in seconds.
+        _client: Optional shared ``httpx.AsyncClient`` instance.
+    """
+
     def __init__(
         self,
         api_key: str,
@@ -16,6 +25,15 @@ class OpenRouterEmbeddingClient:
         timeout: float = 30.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
+        """Store authentication and transport settings for embedding calls.
+
+        Args:
+            api_key: OpenRouter API key.
+            base_url: Embedding endpoint URL.
+            timeout: Request timeout in seconds.
+            client: Optional shared HTTP client.
+        """
+
         self._api_key = api_key
         self._base_url = base_url
         self._timeout = timeout
@@ -27,6 +45,20 @@ class OpenRouterEmbeddingClient:
         *,
         model_name: str = "openai/text-embedding-3-small",
     ) -> List[List[float]]:
+        """Return embeddings for the supplied texts in input order.
+
+        Args:
+            texts: Sequence of input strings to embed.
+            model_name: Embedding model identifier to send to OpenRouter.
+
+        Returns:
+            Embedding vectors in the same order as ``texts``.
+
+        Raises:
+            EmbeddingError: If the OpenRouter request fails or returns invalid
+                data.
+        """
+
         if not texts:
             return []
 

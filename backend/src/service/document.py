@@ -1,3 +1,9 @@
+"""Document ingestion service for law JSON files.
+
+This module turns uploaded JSON documents into searchable database chunks by
+extracting text, batching embeddings, and saving the results.
+"""
+
 import json
 from itertools import islice
 from typing import TYPE_CHECKING, Generator
@@ -11,7 +17,15 @@ if TYPE_CHECKING:
 
 
 def batched[T](iterable: list[T], n: int) -> Generator[list[T], None, None]:
-    """Batch data into lists of length n."""
+    """Yield successive chunks of size ``n`` from a list.
+
+    Args:
+        iterable: List of items to split into smaller batches.
+        n: Maximum number of items per batch.
+
+    Yields:
+        Batches of items from ``iterable`` with at most ``n`` elements.
+    """
 
     it = iter(iterable)
     while batch := list(islice(it, n)):
@@ -19,6 +33,16 @@ def batched[T](iterable: list[T], n: int) -> Generator[list[T], None, None]:
 
 
 class DocumentProcessorService:
+    """Parse uploaded documents and persist searchable law chunks.
+
+    The service accepts a law JSON payload, extracts plain text from fragments,
+    batches embedding generation, and saves the final rows through the
+    repository layer.
+
+    Attributes:
+        EMBEDDING_BATCH_SIZE: Maximum number of texts embedded in one request.
+    """
+
     EMBEDDING_BATCH_SIZE = 100
 
     def __init__(
@@ -26,10 +50,29 @@ class DocumentProcessorService:
         embedding_client: "OpenRouterEmbeddingClient",
         repository: "LawChunkRepository",
     ) -> None:
+        """Store the embedding client and repository used during ingestion.
+
+        Args:
+            embedding_client: Client used to generate text embeddings.
+            repository: Repository used to persist processed chunks.
+        """
+
         self._embedding_client = embedding_client
         self._repository = repository
 
     async def process_document(self, file_content: bytes) -> int:
+        """Parse one uploaded JSON document and store its chunks.
+
+        Args:
+            file_content: Raw UTF-8 encoded JSON payload from the upload.
+
+        Returns:
+            Number of chunks inserted into the database.
+
+        Raises:
+            ValueError: If ``file_content`` is not valid JSON.
+        """
+
         try:
             data = json.loads(file_content.decode("utf-8"))
         except json.JSONDecodeError as e:

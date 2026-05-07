@@ -1,3 +1,5 @@
+"""Top-level API router composition for the backend."""
+
 from fastapi import APIRouter
 
 from .endpoints import data_router, law_router

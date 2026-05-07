@@ -1,4 +1,4 @@
-"""Configuration constants for logging setup."""
+"""Constants used by the application logging setup."""
 
 from logging import INFO, Formatter
 from typing import Final

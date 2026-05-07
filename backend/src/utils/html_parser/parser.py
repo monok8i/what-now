@@ -1,4 +1,4 @@
-"""Utility functions for parsing HTML content and extracting plain text."""
+"""HTML-to-text extraction helpers."""
 
 import html
 from typing import Any
@@ -8,8 +8,17 @@ from src.utils.html_parser.exceptions import InvalidHTMLContentError
 
 
 def extract_text_from_html(content: str | Any | None) -> str:
-    """
-    Extract plain text from HTML content.
+    """Extract plain text from HTML content and normalize entities.
+
+    Args:
+        content: HTML content to convert to plain text.
+
+    Returns:
+        Cleaned plain text extracted from the HTML content.
+
+    Raises:
+        TypeError: If ``content`` is not a string, ``None``, or empty value.
+        InvalidHTMLContentError: If the HTML parser fails while extracting text.
     """
     if not content:
         return ""
