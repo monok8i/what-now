@@ -16,7 +16,6 @@ class LawChunkRepository:
 
         await self.session.flush()
 
-        # Expunge objects to free memory (important for large batches)
         for chunk in db_chunks:
             self.session.expunge(chunk)
 

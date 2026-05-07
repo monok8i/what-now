@@ -5,6 +5,9 @@ resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version < '3.14'",
 ]
+required-markers = [
+    "platform_machine == 'aarch64' and sys_platform == 'linux'",
+]
 
 [[package]]
 name = "alembic"
