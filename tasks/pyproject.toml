@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "bs4>=0.0.2",
+    "celery>=5.6.3",
     "playwright>=1.59.0",
+    "pydantic-settings>=2.14.0",
+    "rabbitmq>=0.2.0",
     "requests>=2.33.1",
 ]

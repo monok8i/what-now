@@ -62,3 +62,47 @@ services:
 
     networks:
       - what-now-network
+  beat:
+    build:
+      context: ./tasks
+      dockerfile: Dockerfile
+    container_name: parser_beat
+    command: celery -A src.celery.app beat -l info
+    env_file:
+      - .env
+    volumes:
+      - ./tasks/src/:/app/src/
+      - ./tasks/main.py:/app/main.py
+
+    depends_on:
+      rabbitmq:
+        condition: service_started
+  worker:
+    build:
+      context: ./tasks
+      dockerfile: Dockerfile
+    container_name: parser_worker
+    command: celery -A src.celery.app worker -l info
+    env_file:
+      - .env
+    volumes:
+      - ./tasks/src/:/app/src/
+      - ./tasks/main.py:/app/main.py
+    depends_on:
+      rabbitmq:
+        condition: service_started
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq/data
+
+volumes:
+  rabbitmq-data:

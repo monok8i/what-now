@@ -13,7 +13,8 @@ from .exceptions import NoLawsFoundError
 
 
 class ParseDocsService:
-    _LAW_ENDPOINT = "http://localhost:8001/api/law"
+    _LAW_JSON_ENDPOINT = "http://backend:8000/api/law"
+    _LAW_PDF_ENDPOINT = "hhtp://backend:8000/api/..."
 
     def _extract_json_from_zip(self, zip_path: Path) -> list[Path]:
         if not zip_path.exists():
@@ -38,7 +39,27 @@ class ParseDocsService:
         with open(json_path, "r", encoding="utf-8") as handle:
             payload = json.load(handle)
 
-        response = requests.post(self._LAW_ENDPOINT, json=payload, timeout=30)
+        response = requests.post(self._LAW_JSON_ENDPOINT, json=payload, timeout=30)
+        response.raise_for_status()
+
+    def _save_pdf_file(self, pdf_path: Path) -> Path | None:
+        if not pdf_path.exists():
+            return None
+
+        target_dir = Path("../../downloaded_laws")
+        target_dir.mkdir(exist_ok=True)
+        target_path = target_dir / pdf_path.name
+
+        if pdf_path.resolve() != target_path.resolve():
+            shutil.move(str(pdf_path), str(target_path))
+            return target_path
+
+        return target_path
+
+    def _post_pdf_file(self, pdf_path: Path) -> None:
+        with open(pdf_path, "rb") as handle:
+            files = {"file": (pdf_path.name, handle, "application/pdf")}
+            response = requests.post(self._LAW_PDF_ENDPOINT, files=files, timeout=30)
         response.raise_for_status()
 
     async def _parse_links(self) -> list[dict[str, Any]]:
@@ -97,7 +118,7 @@ class ParseDocsService:
 
         return date_str.strip() == today_str or date_str.strip() == today_iso
 
-    async def parse_page(self, urls: list[str]) -> None:
+    async def parse_page_json(self, urls: list[str]) -> None:
         Path("../../downloaded_laws").mkdir(exist_ok=True)
 
         async with async_playwright() as p:
@@ -160,7 +181,70 @@ class ParseDocsService:
 
                 await browser.close()
 
-    async def parse(self) -> None:
+    async def parse_page_pdf(self, urls: list[str]) -> None:
+        Path("../../downloaded_laws").mkdir(exist_ok=True)
+
+        async with async_playwright() as p:
+            for url in urls:
+                browser = await p.chromium.launch()
+                page = await browser.new_page()
+
+                # Extract law number for filename
+                law_num = url.split("/")[-1]
+
+                # Setup download handler
+                async def handle_download(download: Download) -> None:
+                    filename = f"downloaded_laws/{law_num}.pdf"
+                    await download.save_as(filename)
+                    print(f"Saved: {filename}")
+                    pdf_path = await asyncio.to_thread(
+                        self._save_pdf_file, Path(filename)
+                    )
+                    if pdf_path is not None:
+                        await asyncio.to_thread(self._post_pdf_file, pdf_path)
+
+                page.on("download", handle_download)
+
+                await page.goto(url)
+                await page.wait_for_load_state("networkidle")
+
+                print(f"Opened: {url}")
+
+                # Click download button in menu
+                try:
+                    download_btn = page.locator(".menu-item-2")
+                    if await download_btn.is_visible(timeout=3000):
+                        print("Clicking download button...")
+                        await download_btn.click()
+                        # Wait for popup to appear
+                        await page.wait_for_timeout(2000)
+
+                        # Find <a> tag inside esel-asynchronni-odkaz-ke-stazeni element
+                        # Filter to get only ZIP link and take the first one
+                        download_link_elem = (
+                            page.locator("esel-asynchronni-odkaz-ke-stazeni a")
+                            .filter(has_text="PDF")
+                            .first
+                        )
+
+                        if await download_link_elem.is_visible(timeout=3000):
+                            print("Found PDF download link, clicking...")
+
+                            # Click the ZIP link
+                            await download_link_elem.click()
+                            # Wait for download to start
+                            await page.wait_for_timeout(3000)
+                            print("File download started")
+                        else:
+                            print("Download link not visible")
+                    else:
+                        print("Download button not visible")
+                except Exception as e:
+                    print(f"Error: {e}")
+
+                await browser.close()
+
+    async def parse_json(self) -> None:
         links = await self._parse_links()
         if not links:
             raise NoLawsFoundError("Any new laws not found")
@@ -173,4 +257,19 @@ class ParseDocsService:
         for law in today_laws:
             urls.append(law["link"])
 
-        await self.parse_page(urls)
+        await self.parse_page_json(urls)
+
+    async def parse_pdf(self) -> None:
+        links = await self._parse_links()
+        if not links:
+            raise NoLawsFoundError("Any new laws not found")
+
+        today_laws = [link for link in links if self._check_if_today(link["date"])]
+        if not today_laws:
+            raise NoLawsFoundError("Any new laws not found")
+
+        urls: list[str] = []
+        for law in today_laws:
+            urls.append(law["link"])
+
+        await self.parse_page_pdf(urls)
