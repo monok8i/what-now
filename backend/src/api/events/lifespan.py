@@ -29,6 +29,7 @@ async def lifespan(app: "FastAPI") -> AsyncGenerator[None]:
         model_name=config.embeddings.EMBEDDING_MODEL_NAME,
         device=config.embeddings.EMBEDDING_DEVICE,
         normalize_embeddings=config.embeddings.EMBEDDING_NORMALIZE,
+        batch_size=config.embeddings.EMBEDDING_BATCH_SIZE,
     )
 
     yield

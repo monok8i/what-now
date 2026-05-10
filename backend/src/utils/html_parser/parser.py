@@ -5,6 +5,7 @@ from typing import Any
 
 from src.utils.html_parser.plain import PlainTextExtractor
 from src.utils.html_parser.exceptions import InvalidHTMLContentError
+from src.utils.text import remove_diacritics
 
 
 def extract_text_from_html(content: str | Any | None) -> str:
@@ -31,7 +32,7 @@ def extract_text_from_html(content: str | Any | None) -> str:
         # decode HTML entities and feed to parser (e.g. &amp; -> &)
         unescaped_content = html.unescape(content)
         parser.feed(unescaped_content)
-        return parser.get_text()
+        return remove_diacritics(parser.get_text())
 
     except Exception as e:
         raise InvalidHTMLContentError(

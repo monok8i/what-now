@@ -22,7 +22,7 @@ class SentenceTransformerEmbeddingClient:
         model_name: str,
         device: str | None = None,
         normalize_embeddings: bool = True,
-        batch_size: int = 32,
+        batch_size: int,
     ) -> None:
         """Load the embedding model and store generation settings.
 

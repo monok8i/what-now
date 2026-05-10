@@ -11,6 +11,11 @@ else
   exit 1
 fi
 
+echo "Downloading embedding model snapshot..."
+python -m src.infra.embeddings.download_model
+
+echo "✓ Embedding model snapshot is ready"
+
 echo "Starting FastAPI server..."
 
 # Start the FastAPI application with Uvicorn

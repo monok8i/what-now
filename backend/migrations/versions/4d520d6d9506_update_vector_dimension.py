@@ -9,8 +9,7 @@ Create Date: 2026-05-10 13:07:34.774683
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-
+import pgvector.sqlalchemy as pgv  # type: ignore
 
 # revision identifiers, used by Alembic.
 revision: str = "4d520d6d9506"
@@ -25,8 +24,8 @@ def upgrade() -> None:
     op.alter_column(
         "lawchunk",
         "embedding",
-        existing_type=pgvector.sqlalchemy.vector.VECTOR(dim=1536),
-        type_=pgvector.sqlalchemy.vector.VECTOR(dim=768),
+        existing_type=pgv.VECTOR(dim=1536),
+        type_=pgv.VECTOR(dim=768),
         existing_nullable=True,
     )
     # ### end Alembic commands ###
@@ -38,8 +37,8 @@ def downgrade() -> None:
     op.alter_column(
         "lawchunk",
         "embedding",
-        existing_type=pgvector.sqlalchemy.vector.VECTOR(dim=768),
-        type_=pgvector.sqlalchemy.vector.VECTOR(dim=1536),
+        existing_type=pgv.VECTOR(dim=768),
+        type_=pgv.VECTOR(dim=1536),
         existing_nullable=True,
     )
     # ### end Alembic commands ###

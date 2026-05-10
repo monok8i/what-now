@@ -15,3 +15,4 @@ class Config(BaseEnvConfig):
     EMBEDDING_MODEL_NAME: str
     EMBEDDING_DEVICE: str | None = None
     EMBEDDING_NORMALIZE: bool = True
+    EMBEDDING_BATCH_SIZE: int = 100
