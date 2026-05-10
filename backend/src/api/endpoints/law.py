@@ -13,7 +13,7 @@ from src.api.depends import (
     get_embedding_client,
     get_law_chunk_repository,
 )
-from src.api.exceptions import UnsupportedMediaTypeError
+from src.api.exceptions import UnsupportedMediaTypeError, DocumentProcessingError
 from src.infra.db.repository import LawChunkRepository
 from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 from src.utils.file import extract_file_type
@@ -51,18 +51,24 @@ async def upload_law(
 
     match file_type:
         case "json":
-            file_content = await file.read()
-            total_document = await processor.process_json_document(
-                file_content,
-                filename=file.filename,
-            )
+            try:
+                file_content = await file.read()
+                total_document = await processor.process_json_document(
+                    file_content,
+                    filename=file.filename,
+                )
+            except Exception as e:
+                raise DocumentProcessingError(detail=str(e))
 
         case "pdf":
-            file_content = await file.read()
-            total_document = await processor.process_pdf_document(
-                file_content,
-                filename=file.filename,
-            )
+            try:
+                file_content = await file.read()
+                total_document = await processor.process_pdf_document(
+                    file_content,
+                    filename=file.filename,
+                )
+            except Exception as e:
+                raise DocumentProcessingError(detail=str(e))
 
         case _:
             raise UnsupportedMediaTypeError(

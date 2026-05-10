@@ -11,6 +11,14 @@ class NotImplementedError(HTTPException):
         )
 
 
+class DocumentProcessingError(HTTPException):
+    def __init__(self, detail: str = "Failed to process document.") -> None:
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
+
+
 class UnsupportedMediaTypeError(HTTPException):
     def __init__(self, detail: str = "Unsupported media type.") -> None:
         super().__init__(
