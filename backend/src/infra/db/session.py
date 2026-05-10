@@ -45,7 +45,7 @@ async def get_async_session(database_engine: AsyncEngine):
             await session.commit()
             elapsed = time.perf_counter() - start_time
             logger.info(
-                f"[Database] Session committed successfully in {elapsed:.2f} seconds."
+                f"[Database] Session committed successfully in {elapsed:.7f} seconds."
             )
 
         except Exception as e:
