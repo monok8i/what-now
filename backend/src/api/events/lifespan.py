@@ -4,8 +4,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
+
 if TYPE_CHECKING:
     from fastapi import FastAPI
+    from src.config._global import Config as ProjectConfig
 
 
 @asynccontextmanager
@@ -19,4 +22,13 @@ async def lifespan(app: "FastAPI") -> AsyncGenerator[None]:
         Nothing. The context manager exists so startup and shutdown hooks can
         be added in a single place when needed.
     """
+
+    config: "ProjectConfig" = app.state.project_config
+
+    app.state.embedding_client = SentenceTransformerEmbeddingClient(
+        model_name=config.embeddings.EMBEDDING_MODEL_NAME,
+        device=config.embeddings.EMBEDDING_DEVICE,
+        normalize_embeddings=config.embeddings.EMBEDDING_NORMALIZE,
+    )
+
     yield

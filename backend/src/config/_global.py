@@ -1,12 +1,14 @@
 """Global configuration container for the application.
 
-This module lazily instantiates API, AI, and database configuration objects and
-exposes them through a single shared ``config`` instance.
+This module lazily instantiates API, embedding, OpenRouter, and database
+configuration objects and exposes them through a single shared ``config``
+instance.
 """
 
 from functools import cached_property
 
-from src.infra.ai.config import Config as AIConfig
+from src.infra.embeddings.config import Config as EmbeddingsConfig
+from src.infra.openrouter.config import Config as OpenRouterConfig
 from src.infra.db.config import Config as DBConfig
 from src.api.config import Config as APIConfig
 
@@ -28,13 +30,23 @@ class Config:
         return APIConfig()  # type: ignore
 
     @cached_property
-    def ai(self) -> AIConfig:
-        """Return the configuration used by the AI integration layer.
+    def openrouter(self) -> OpenRouterConfig:
+        """Return the configuration used by the OpenRouter integration layer.
 
         Returns:
-            AI configuration object.
+            OpenRouter configuration object.
         """
-        return AIConfig()  # type: ignore
+        return OpenRouterConfig()  # type: ignore
+
+    @cached_property
+    def embeddings(self) -> EmbeddingsConfig:
+        """Return the configuration used by the embedding client.
+
+        Returns:
+            Embedding configuration object.
+        """
+
+        return EmbeddingsConfig()  # type: ignore
 
     @cached_property
     def db(self) -> DBConfig:

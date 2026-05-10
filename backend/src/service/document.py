@@ -12,8 +12,8 @@ from src.utils.html_parser.parser import extract_text_from_html
 from src.infra.db.types import LawChunkType
 
 if TYPE_CHECKING:
-    from src.infra.ai.embedding.client import OpenRouterEmbeddingClient
     from src.infra.db.repository import LawChunkRepository
+    from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
 
 def batched[T](iterable: list[T], n: int) -> Generator[list[T], None, None]:
@@ -47,7 +47,7 @@ class DocumentProcessorService:
 
     def __init__(
         self,
-        embedding_client: "OpenRouterEmbeddingClient",
+        embedding_client: "SentenceTransformerEmbeddingClient",
         repository: "LawChunkRepository",
     ) -> None:
         """Store the embedding client and repository used during ingestion.
@@ -60,7 +60,7 @@ class DocumentProcessorService:
         self._embedding_client = embedding_client
         self._repository = repository
 
-    async def process_document(self, file_content: bytes) -> int:
+    async def process_json_document(self, file_content: bytes) -> int:
         """Parse one uploaded JSON document and store its chunks.
 
         Args:

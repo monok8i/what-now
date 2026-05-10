@@ -19,7 +19,7 @@ class LawChunk(IdIntegerMixin, Base):
         depth: Fragment depth in the source hierarchy.
         fragment_type: Fragment type label from the source dataset.
         clean_text: Plain-text content extracted from the source HTML.
-        embedding: Optional 1536-dimensional vector used for semantic search.
+        embedding: Optional 768-dimensional vector used for semantic search.
     """
 
     # Document metadata
@@ -41,4 +41,4 @@ class LawChunk(IdIntegerMixin, Base):
     clean_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Embedding
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
