@@ -12,6 +12,6 @@ class AIError(Exception):
 class EmbeddingError(AIError):
     """Error raised when embedding generation fails.
 
-    This error is raised when the embedding API request fails or when the
-    returned payload cannot be converted into embedding vectors.
+    This error is raised when an embedding model cannot be loaded or when
+    text cannot be converted into embedding vectors.
     """

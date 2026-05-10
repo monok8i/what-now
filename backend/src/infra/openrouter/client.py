@@ -4,15 +4,15 @@ from typing import List, Sequence
 
 import httpx
 
-from src.infra.ai.exceptions import EmbeddingError
+from src.infra.openrouter.exceptions import EmbeddingError
 
 
-class OpenRouterEmbeddingClient:
+class OpenRouterClient:
     """Generate embeddings through the OpenRouter embeddings endpoint.
 
     Attributes:
         _api_key: Authentication token used for OpenRouter requests.
-        _base_url: Embedding endpoint URL.
+        _embedding_api_url: Embedding endpoint URL.
         _timeout: Request timeout in seconds.
         _client: Optional shared ``httpx.AsyncClient`` instance.
     """
@@ -21,7 +21,7 @@ class OpenRouterEmbeddingClient:
         self,
         api_key: str,
         *,
-        base_url: str = "https://openrouter.ai/api/v1/embeddings",
+        embedding_api_url: str,
         timeout: float = 30.0,
         client: httpx.AsyncClient | None = None,
     ) -> None:
@@ -29,13 +29,13 @@ class OpenRouterEmbeddingClient:
 
         Args:
             api_key: OpenRouter API key.
-            base_url: Embedding endpoint URL.
+            embedding_api_url: Embedding endpoint URL.
             timeout: Request timeout in seconds.
             client: Optional shared HTTP client.
         """
 
         self._api_key = api_key
-        self._base_url = base_url
+        self._embedding_api_url = embedding_api_url
         self._timeout = timeout
         self._client = client
 
@@ -77,7 +77,7 @@ class OpenRouterEmbeddingClient:
         try:
             if self._client:
                 response = await self._client.post(
-                    self._base_url,
+                    self._embedding_api_url,
                     headers=headers,
                     json=payload,
                     timeout=self._timeout,
@@ -85,7 +85,7 @@ class OpenRouterEmbeddingClient:
             else:
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
-                        self._base_url,
+                        self._embedding_api_url,
                         headers=headers,
                         json=payload,
                         timeout=self._timeout,
@@ -103,3 +103,5 @@ class OpenRouterEmbeddingClient:
             ) from e
         except Exception as e:
             raise EmbeddingError(f"OpenRouter API batch embedding error: {e}") from e
+
+    async def generate_content_chunks(self, content: str): ...
