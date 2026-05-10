@@ -124,18 +124,11 @@ async def search_laws(
 
     results = [
         LawChunkSearchResult(
-            document_number=chunk.document_number,
-            year=chunk.year,
-            source_kind=chunk.source_kind,
-            fragment_id=chunk.fragment_id,
-            depth=chunk.depth,
-            fragment_type=chunk.fragment_type,
-            page_start=chunk.page_start,
-            page_end=chunk.page_end,
-            chunk_index=chunk.chunk_index,
-            section_title=chunk.section_title,
-            source_filename=chunk.source_filename,
-            clean_text=chunk.clean_text,
+            **{
+                k: getattr(chunk, k)
+                for k in LawChunkSearchResult.model_fields
+                if k != "distance"
+            },
             distance=distance,
         )
         for chunk, distance in chunks
