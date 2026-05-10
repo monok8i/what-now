@@ -1,6 +1,6 @@
 """Laws endpoints for the API."""
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from src.api.schemas import (
     LawChunkSearchResult,
@@ -13,14 +13,16 @@ from src.api.depends import (
     get_embedding_client,
     get_law_chunk_repository,
 )
+from src.api.exceptions import UnsupportedMediaTypeError, NotImplementedError
 from src.infra.db.repository import LawChunkRepository
-from src.infra.ai.embedding.client import OpenRouterEmbeddingClient
+from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
+from src.utils.file import extract_file_type
 
 
 router = APIRouter(prefix="/laws", tags=["laws"])
 
 
-@router.get("/health")
+@router.get("/health", status_code=status.HTTP_200_OK)
 async def health_check():
     """Return a lightweight health status for the laws API slice.
 
@@ -30,7 +32,7 @@ async def health_check():
     return {"status": "healthy", "service": "laws"}
 
 
-@router.post("/", response_model=LawUploadResponse)
+@router.post("/", response_model=LawUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_law(
     processor: DocumentProcessorServiceDependency,
     file: UploadFile = File(...),
@@ -39,30 +41,46 @@ async def upload_law(
 
     Args:
         processor: Document ingestion service used to parse and persist chunks.
-        file: Uploaded JSON file containing the law document.
+        file: Uploaded JSON/PDF file containing the law document.
 
     Returns:
         Upload response containing the total number of stored chunks.
     """
 
-    file_content = await file.read()
+    file_type = extract_file_type(file.filename)
 
-    total_document = await processor.process_document(file_content)
+    match file_type:
+        case "json":
+            file_content = await file.read()
+            total_document = await processor.process_json_document(file_content)
+
+        # TODO: Implement PDF processing (chunks, metadata extraction, saving to DB)
+        case "pdf":
+            raise NotImplementedError("PDF document processing is not yet implemented.")
+
+        case _:
+            raise UnsupportedMediaTypeError(
+                detail=f"Unsupported file type: {file_type or 'unknown'}"
+            )
 
     return LawUploadResponse(success=True, total_chunks=total_document)
 
 
-@router.post("/search", response_model=LawSearchResponse)
+@router.post(
+    "/search", response_model=LawSearchResponse, status_code=status.HTTP_200_OK
+)
 async def search_laws(
     payload: LawSearchRequest,
-    embedding_client: OpenRouterEmbeddingClient = Depends(get_embedding_client),
+    embedding_client: SentenceTransformerEmbeddingClient = Depends(
+        get_embedding_client
+    ),
     repository: LawChunkRepository = Depends(get_law_chunk_repository),
 ):
     """Search law chunks by semantic similarity to the supplied prompt.
 
     Args:
         payload: Semantic search request containing the prompt and filters.
-        embedding_client: Embedding client used to encode the query text.
+        embedding_client: Shared sentence embedding client used to encode the query text.
         repository: Repository used to query law chunks from the database.
 
     Returns:
