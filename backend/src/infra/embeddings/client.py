@@ -5,7 +5,7 @@ from typing import Sequence
 
 from sentence_transformers import SentenceTransformer
 
-from src.infra.openrouter.exceptions import EmbeddingError
+from .exceptions import EmbeddingError
 
 
 class SentenceTransformerEmbeddingClient:
@@ -50,12 +50,6 @@ class SentenceTransformerEmbeddingClient:
             raise EmbeddingError(
                 f"Failed to load embedding model '{model_name}': {e}"
             ) from e
-
-    @property
-    def model_name(self) -> str:
-        """Return the loaded embedding model identifier."""
-
-        return self._model_name
 
     async def generate_embeddings(self, texts: Sequence[str]) -> list[list[float]]:
         """Return embeddings for the supplied texts in input order.

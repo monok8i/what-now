@@ -39,6 +39,12 @@ def setup_logging() -> logging.Logger:
         logger.handlers.clear()
         logger.propagate = True
 
+    # --- SQLAlchemy ---
+    for name in ["sqlalchemy.engine", "sqlalchemy.pool"]:
+        logger = logging.getLogger(name)
+        logger.handlers.clear()
+        logger.propagate = True
+
     # --- Queue handler ---
     queue_handler = QueueHandler(queue=_queue)  # pyright: ignore[reportUnknownArgumentType]
     queue_handler.setLevel(DEFAULT_LOGGING_LEVEL_DICT.get("main", logging.INFO))

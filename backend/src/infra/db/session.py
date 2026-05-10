@@ -3,11 +3,16 @@
 This module provides the async session dependency used by the API layer.
 """
 
+import logging
+import time
+
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def get_async_session(database_engine: AsyncEngine):
@@ -32,10 +37,20 @@ async def get_async_session(database_engine: AsyncEngine):
 
     async with _local_session() as session:
         try:
+            start_time = time.perf_counter()
+            logger.info("[Database] Session started.")
+
             yield session
+
             await session.commit()
+            elapsed = time.perf_counter() - start_time
+            logger.info(
+                f"[Database] Session committed successfully in {elapsed:.2f} seconds."
+            )
+
         except Exception as e:
             await session.rollback()
             raise e
+
         finally:
             await session.close()
