@@ -42,18 +42,27 @@ class LawChunkRepository:
 
         return len(db_chunks)
 
-    async def count_chunks(self, *, indexed_only: bool = False) -> int:
+    async def count_chunks(
+        self,
+        *,
+        indexed_only: bool = False,
+        source_kind: str | None = None,
+    ) -> int:
         """Count chunks in the database.
 
         Args:
             indexed_only: When ``True``, count only rows that already have an
                 embedding stored.
+            source_kind: Optional chunk origin filter.
 
         Returns:
             Number of rows matching the chosen filter.
         """
 
         stmt = select(func.count()).select_from(LawChunk)
+
+        if source_kind is not None:
+            stmt = stmt.where(LawChunk.source_kind == source_kind)
 
         if indexed_only:
             stmt = stmt.where(LawChunk.embedding.is_not(None))
@@ -67,6 +76,7 @@ class LawChunkRepository:
         *,
         limit: int | None = None,
         max_distance: float | None = None,
+        source_kind: str | None = None,
     ) -> list[tuple[LawChunk, float]]:
         """Find chunks ordered by cosine distance to the query embedding.
 
@@ -74,6 +84,7 @@ class LawChunkRepository:
             query_embedding: Embedding vector generated from the user prompt.
             limit: Optional maximum number of rows to return.
             max_distance: Optional inclusive distance cutoff for accepted rows.
+            source_kind: Optional chunk origin filter.
 
         Returns:
             Tuples of ``(LawChunk, distance)`` ordered from nearest to farthest.
@@ -89,6 +100,9 @@ class LawChunkRepository:
             .where(LawChunk.embedding.is_not(None))
             .order_by(distance)
         )
+
+        if source_kind is not None:
+            stmt = stmt.where(LawChunk.source_kind == source_kind)
 
         if max_distance is not None:
             stmt = stmt.where(distance <= max_distance)

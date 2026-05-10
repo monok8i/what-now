@@ -13,7 +13,7 @@ from src.api.depends import (
     get_embedding_client,
     get_law_chunk_repository,
 )
-from src.api.exceptions import UnsupportedMediaTypeError, NotImplementedError
+from src.api.exceptions import UnsupportedMediaTypeError
 from src.infra.db.repository import LawChunkRepository
 from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 from src.utils.file import extract_file_type
@@ -52,11 +52,17 @@ async def upload_law(
     match file_type:
         case "json":
             file_content = await file.read()
-            total_document = await processor.process_json_document(file_content)
+            total_document = await processor.process_json_document(
+                file_content,
+                filename=file.filename,
+            )
 
-        # TODO: Implement PDF processing (chunks, metadata extraction, saving to DB)
         case "pdf":
-            raise NotImplementedError("PDF document processing is not yet implemented.")
+            file_content = await file.read()
+            total_document = await processor.process_pdf_document(
+                file_content,
+                filename=file.filename,
+            )
 
         case _:
             raise UnsupportedMediaTypeError(
@@ -87,8 +93,11 @@ async def search_laws(
         Search response containing counts and ordered semantic matches.
     """
 
-    total_chunks = await repository.count_chunks()
-    searchable_chunks = await repository.count_chunks(indexed_only=True)
+    total_chunks = await repository.count_chunks(source_kind=payload.source_kind)
+    searchable_chunks = await repository.count_chunks(
+        indexed_only=True,
+        source_kind=payload.source_kind,
+    )
 
     query_embedding = await embedding_client.generate_embeddings([payload.prompt])
     if not query_embedding:
@@ -104,15 +113,22 @@ async def search_laws(
         query_embedding[0],
         limit=payload.limit,
         max_distance=payload.max_distance,
+        source_kind=payload.source_kind,
     )
 
     results = [
         LawChunkSearchResult(
             document_number=chunk.document_number,
             year=chunk.year,
+            source_kind=chunk.source_kind,
             fragment_id=chunk.fragment_id,
             depth=chunk.depth,
             fragment_type=chunk.fragment_type,
+            page_start=chunk.page_start,
+            page_end=chunk.page_end,
+            chunk_index=chunk.chunk_index,
+            section_title=chunk.section_title,
+            source_filename=chunk.source_filename,
             clean_text=chunk.clean_text,
             distance=distance,
         )

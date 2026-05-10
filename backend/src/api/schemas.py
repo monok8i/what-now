@@ -1,5 +1,7 @@
 """Pydantic models used by the API request and response payloads."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -22,11 +24,13 @@ class LawSearchRequest(BaseModel):
         prompt: Natural-language query used to generate the search embedding.
         limit: Optional upper bound on the number of results returned.
         max_distance: Optional maximum cosine distance for accepted results.
+        source_kind: Optional filter for chunk origin, either ``fragment`` or ``pdf``.
     """
 
     prompt: str = Field(min_length=1)
     limit: int | None = Field(default=None, ge=1, le=1000)
     max_distance: float | None = Field(default=None, ge=0, le=2)
+    source_kind: Literal["fragment", "pdf"] | None = None
 
 
 class LawChunkSearchResult(BaseModel):
@@ -35,18 +39,30 @@ class LawChunkSearchResult(BaseModel):
     Attributes:
         document_number: Official document identifier of the source law.
         year: Publication year of the source document.
+        source_kind: Chunk origin, either ``fragment`` or ``pdf``.
         fragment_id: Unique identifier of the matched fragment.
         depth: Fragment depth in the source hierarchy.
         fragment_type: Fragment type label from the source dataset.
+        page_start: First PDF page covered by the chunk.
+        page_end: Last PDF page covered by the chunk.
+        chunk_index: Chunk order within the source document.
+        section_title: Optional section/article title detected during chunking.
+        source_filename: Original uploaded filename.
         clean_text: Plain-text fragment content extracted from the source HTML.
         distance: Cosine distance between the query embedding and the fragment.
     """
 
     document_number: str
     year: int
-    fragment_id: int
-    depth: int
-    fragment_type: str
+    source_kind: str
+    fragment_id: int | None
+    depth: int | None
+    fragment_type: str | None
+    page_start: int | None
+    page_end: int | None
+    chunk_index: int | None
+    section_title: str | None
+    source_filename: str | None
     clean_text: str | None
     distance: float
 
