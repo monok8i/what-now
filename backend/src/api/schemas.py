@@ -29,7 +29,7 @@ class LawSearchRequest(BaseModel):
 
     prompt: str = Field(min_length=1)
     limit: int | None = Field(default=None, ge=1, le=1000)
-    max_distance: float | None = Field(default=None, ge=0, le=2)
+    max_distance: float | None = Field(default=None, ge=0, le=1)
     source_kind: Literal["fragment", "pdf"] | None = None
 
 

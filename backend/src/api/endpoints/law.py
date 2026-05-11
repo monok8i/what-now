@@ -1,6 +1,6 @@
 """Laws endpoints for the API."""
 
-from fastapi import APIRouter, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from src.api.schemas import (
     LawChunkSearchResult,
@@ -79,12 +79,10 @@ async def upload_law(
     return LawUploadResponse(success=True, total_chunks=total_document)
 
 
-@router.post(
-    "/search", response_model=LawSearchResponse, status_code=status.HTTP_200_OK
-)
+@router.get("/search", response_model=LawSearchResponse, status_code=status.HTTP_200_OK)
 async def search_laws(
-    payload: LawSearchRequest,
     search_service: SearchServiceDependency,
+    payload: LawSearchRequest = Depends(),
 ):
     """Search law chunks by semantic similarity to the supplied prompt.
 
