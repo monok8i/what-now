@@ -2,6 +2,7 @@
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.api import router as api_router
 from src.api.events.lifespan import lifespan
@@ -17,6 +18,13 @@ def create_fastapi() -> FastAPI:
 
     app = FastAPI(title="What Now API", lifespan=lifespan)
     app.state.project_config = config
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.api.ALLOW_ORIGINS,
+        allow_credentials=config.api.ALLOW_CREDENTIALS,
+        allow_methods=config.api.ALLOW_METHODS,
+        allow_headers=config.api.ALLOW_HEADERS,
+    )
 
     app.include_router(api_router)
 

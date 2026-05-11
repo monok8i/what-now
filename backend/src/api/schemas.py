@@ -83,3 +83,33 @@ class LawSearchResponse(BaseModel):
     total_chunks: int
     searchable_chunks: int
     results: list[LawChunkSearchResult]
+
+
+class FirstAnswerResponse(BaseModel):
+    """Response model for the first answer generation."""
+
+    total_chunks: int
+    message: str
+
+
+class UserFormRequest(BaseModel):
+    """Request model for caregiver questionnaire data."""
+
+    # Block 1: "Kdo potřebuje péči?"
+    relationship: str = Field(..., description="Vztah k pečované osobě")
+    care_recipient_age: int = Field(..., description="Věk pečované osoby")
+    care_recipient_gender: str = Field(..., description="Pohlaví pečované osoby")
+
+    # Block 2: "Jak na tom je?"
+    self_sufficiency: str = Field(..., description="Míra soběstačnosti")
+    has_care_allowance: str = Field(..., description="Má přiznán Příspěvek na péči?")
+    situation_duration: str = Field(..., description="Jak dlouho situace trvá?")
+
+    # Block 3: "Jak to máte zařízené?"
+    living_arrangement: str = Field(..., description="Kde pečovaná osoba bydlí?")
+    postal_code: str = Field(..., description="PSČ bydliště pečované osoby")
+    additional_help: list[str] = Field(..., description="Pomáhá ti někdo další?")
+
+    # Block 4: "Tvoje situace"
+    employment_status: str = Field(..., description="Pracuješ?")
+    main_concerns: list[str] = Field(..., description="Co tě teď nejvíc trápí? (max 2)")

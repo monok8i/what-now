@@ -32,7 +32,4 @@ async def lifespan(app: "FastAPI") -> AsyncGenerator[None]:
         batch_size=config.embeddings.EMBEDDING_BATCH_SIZE,
     )
 
-    try:
-        yield
-    finally:
-        await app.state.ai_client.aclose()
+    yield

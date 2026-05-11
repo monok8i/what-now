@@ -30,3 +30,11 @@ class SearchResultSet:
     total_chunks: int
     searchable_chunks: int
     results: list[SearchChunkResult]
+
+
+@dataclass(slots=True)
+class FirstAnswerResult:
+    """Structured result of the first answer generation."""
+
+    total_chunks: int
+    message: str

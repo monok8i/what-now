@@ -9,11 +9,12 @@ if TYPE_CHECKING:
     from src.core.config._global import Config as ProjectConfig
     from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
+from src.infra.ai.client import GemmaChatClient
 from src.infra.db.repository import LawChunkRepository
 from src.infra.db.session import get_async_session
-from src.infra.ai.client import GemmaChatClient
 
 from src.service.document import DocumentProcessorService
+from src.service.first_answer import FirstAnswerService
 from src.service.search import SearchService
 
 
@@ -51,10 +52,8 @@ def get_ai_client(
 
     Args:
         request: Current FastAPI request object.
-        config: Resolved project configuration.
-
     Returns:
-        An instance of the AI chat client initialized with the provided config.
+        The shared AI chat client stored on application state.
     """
 
     return GemmaChatClient(
@@ -132,3 +131,17 @@ def search_service(
 
 
 SearchServiceDependency = Annotated[SearchService, Depends(search_service)]
+
+
+def first_answer_service(
+    ai_client: GemmaChatClient = Depends(get_ai_client),
+    search_service: SearchService = Depends(search_service),
+):
+    """Create the service that turns a form into the first assistant sentence."""
+
+    return FirstAnswerService(ai_client=ai_client, search_service=search_service)
+
+
+FirstAnswerServiceDependency = Annotated[
+    FirstAnswerService, Depends(first_answer_service)
+]

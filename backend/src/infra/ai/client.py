@@ -26,7 +26,7 @@ class GemmaChatClient:
 
         self._model_name = model_name
         self._server_url = server_url
-        self._client = httpx.AsyncClient(timeout=request_timeout)
+        self._request_timeout = request_timeout
 
     async def chat(self, prompt: str) -> str:
         """
@@ -52,15 +52,12 @@ class GemmaChatClient:
         }
 
         try:
-            response = await self._client.post(self._server_url, json=payload)
-            response.raise_for_status()
+            async with httpx.AsyncClient(timeout=self._request_timeout) as client:
+                response = await client.post(self._server_url, json=payload)
+                response.raise_for_status()
 
             data = response.json()
             return data["message"]["content"]
+
         except (httpx.HTTPError, KeyError, ValueError) as e:
             raise AIClientError(f"Chat request failed: {e}") from e
-
-    async def aclose(self) -> None:
-        """Close the underlying HTTP client."""
-
-        await self._client.aclose()
