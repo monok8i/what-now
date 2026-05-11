@@ -1,6 +1,6 @@
 """API server configuration settings."""
 
-from src.config.env import BaseEnvConfig
+from src.core.config.env import BaseEnvConfig
 
 
 class Config(BaseEnvConfig):

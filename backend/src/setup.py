@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from src.api import router as api_router
 from src.api.events.lifespan import lifespan
-from src.config._global import config
+from src.core.config._global import config
 
 
 def create_fastapi() -> FastAPI:

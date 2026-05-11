@@ -8,7 +8,7 @@ from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
-    from src.config._global import Config as ProjectConfig
+    from src.core.config._global import Config as ProjectConfig
 
 
 @asynccontextmanager

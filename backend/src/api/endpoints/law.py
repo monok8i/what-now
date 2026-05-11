@@ -1,6 +1,6 @@
 """Laws endpoints for the API."""
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, File, UploadFile, status
 
 from src.api.schemas import (
     LawChunkSearchResult,
@@ -10,12 +10,13 @@ from src.api.schemas import (
 )
 from src.api.depends import (
     DocumentProcessorServiceDependency,
-    get_embedding_client,
-    get_law_chunk_repository,
+    SearchServiceDependency,
 )
-from src.api.exceptions import UnsupportedMediaTypeError, DocumentProcessingError
-from src.infra.db.repository import LawChunkRepository
-from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
+from src.api.exceptions import (
+    DocumentProcessingError,
+    SearchError,
+    UnsupportedMediaTypeError,
+)
 from src.utils.file import extract_file_type
 
 
@@ -83,10 +84,7 @@ async def upload_law(
 )
 async def search_laws(
     payload: LawSearchRequest,
-    embedding_client: SentenceTransformerEmbeddingClient = Depends(
-        get_embedding_client
-    ),
-    repository: LawChunkRepository = Depends(get_law_chunk_repository),
+    search_service: SearchServiceDependency,
 ):
     """Search law chunks by semantic similarity to the supplied prompt.
 
@@ -99,45 +97,30 @@ async def search_laws(
         Search response containing counts and ordered semantic matches.
     """
 
-    total_chunks = await repository.count_chunks(source_kind=payload.source_kind)
-    searchable_chunks = await repository.count_chunks(
-        indexed_only=True,
-        source_kind=payload.source_kind,
-    )
-
-    query_embedding = await embedding_client.generate_embeddings([payload.prompt])
-    if not query_embedding:
-        return LawSearchResponse(
-            query=payload.prompt,
-            total_results=0,
-            total_chunks=total_chunks,
-            searchable_chunks=searchable_chunks,
-            results=[],
+    try:
+        result_set = await search_service.search(
+            prompt=payload.prompt,
+            limit=payload.limit,
+            max_distance=payload.max_distance,
+            source_kind=payload.source_kind,
         )
-
-    chunks = await repository.find_relevant_chunks(
-        query_embedding[0],
-        limit=payload.limit,
-        max_distance=payload.max_distance,
-        source_kind=payload.source_kind,
-    )
-
-    results = [
-        LawChunkSearchResult(
-            **{
-                k: getattr(chunk, k)
-                for k in LawChunkSearchResult.model_fields
-                if k != "distance"
-            },
-            distance=distance,
-        )
-        for chunk, distance in chunks
-    ]
+    except Exception as e:
+        raise SearchError(detail=str(e)) from e
 
     return LawSearchResponse(
-        query=payload.prompt,
-        total_results=len(results),
-        total_chunks=total_chunks,
-        searchable_chunks=searchable_chunks,
-        results=results,
+        query=result_set.query,
+        total_results=len(result_set.results),
+        total_chunks=result_set.total_chunks,
+        searchable_chunks=result_set.searchable_chunks,
+        results=[
+            LawChunkSearchResult(
+                **{
+                    k: getattr(chunk, k)
+                    for k in LawChunkSearchResult.model_fields
+                    if k != "distance"
+                },
+                distance=chunk.distance,
+            )
+            for chunk in result_set.results
+        ],
     )

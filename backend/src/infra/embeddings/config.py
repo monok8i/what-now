@@ -1,6 +1,6 @@
 """Environment settings for the sentence embedding client."""
 
-from src.config.env import BaseEnvConfig
+from src.core.config.env import BaseEnvConfig
 
 
 class Config(BaseEnvConfig):

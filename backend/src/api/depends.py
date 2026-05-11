@@ -6,14 +6,15 @@ from fastapi import Depends, Request
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-    from src.config._global import Config as ProjectConfig
+    from src.core.config._global import Config as ProjectConfig
     from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
-from src.infra.ai.client import GemmaChatClient
 from src.infra.db.repository import LawChunkRepository
 from src.infra.db.session import get_async_session
+from src.infra.ai.client import GemmaChatClient
 
 from src.service.document import DocumentProcessorService
+from src.service.search import SearchService
 
 
 def get_config(request: Request) -> "ProjectConfig":
@@ -117,3 +118,17 @@ DocumentProcessorServiceDependency = Annotated[
 
 
 AIClientDependency = Annotated["GemmaChatClient", Depends(get_ai_client)]
+
+
+def search_service(
+    embedding_client: "SentenceTransformerEmbeddingClient" = Depends(
+        get_embedding_client
+    ),
+    repository: LawChunkRepository = Depends(get_law_chunk_repository),
+):
+    """Create the search service used by law search endpoints."""
+
+    return SearchService(embedding_client=embedding_client, repository=repository)
+
+
+SearchServiceDependency = Annotated[SearchService, Depends(search_service)]

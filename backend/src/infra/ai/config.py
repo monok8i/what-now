@@ -1,6 +1,6 @@
 """Environment settings for the AI chat client."""
 
-from src.config.env import BaseEnvConfig
+from src.core.config.env import BaseEnvConfig
 
 
 class Config(BaseEnvConfig):

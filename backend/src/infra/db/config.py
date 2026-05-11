@@ -8,7 +8,7 @@ from pydantic import AliasChoices, Field, PostgresDsn, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from src.config.env import BaseEnvConfig
+from src.core.config.env import BaseEnvConfig
 
 
 class Config(BaseEnvConfig):

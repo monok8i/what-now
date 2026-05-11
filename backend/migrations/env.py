@@ -8,7 +8,7 @@ from logging.config import fileConfig
 
 from alembic import context
 
-from src.config._global import config as project_config
+from src.core.config._global import config as project_config
 from src.infra.db.models import Base
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection

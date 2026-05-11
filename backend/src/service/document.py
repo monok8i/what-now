@@ -15,6 +15,12 @@ from pypdf import PdfReader
 
 from src.utils.html_parser.parser import extract_text_from_html
 from src.utils.text import remove_diacritics
+from src.core.exceptions import (
+    EncryptedPdfDocumentError,
+    InvalidJsonDocumentError,
+    InvalidPdfDocumentError,
+    PdfMetadataExtractionError,
+)
 from src.infra.db.types import LawChunkType
 
 if TYPE_CHECKING:
@@ -89,7 +95,7 @@ class DocumentProcessorService:
         try:
             data = json.loads(file_content.decode("utf-8"))
         except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON file: {e}")
+            raise InvalidJsonDocumentError(f"Invalid JSON file: {e}") from e
 
         metadata = data.get("metadata", {})
         fragmenty = data.get("fragmenty", [])
@@ -164,13 +170,15 @@ class DocumentProcessorService:
         try:
             reader = PdfReader(io.BytesIO(file_content))
         except Exception as e:
-            raise ValueError(f"Invalid PDF file: {e}") from e
+            raise InvalidPdfDocumentError(f"Invalid PDF file: {e}") from e
 
         if reader.is_encrypted:
             try:
                 reader.decrypt("")
             except Exception as e:
-                raise ValueError(f"Encrypted PDF file is not supported: {e}") from e
+                raise EncryptedPdfDocumentError(
+                    f"Encrypted PDF file is not supported: {e}"
+                ) from e
 
         document_number, year = self._extract_pdf_metadata(reader, filename)
 
@@ -243,7 +251,7 @@ class DocumentProcessorService:
             if year_match:
                 return document_number, int(year_match.group(1))
 
-        raise ValueError(
+        raise PdfMetadataExtractionError(
             "Unable to determine document metadata for PDF ingestion. Provide a "
             "filename like 'Sb_2006_108_...pdf' or extract an official number "
             "from the first PDF pages."
