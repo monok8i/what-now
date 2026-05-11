@@ -9,8 +9,9 @@ if TYPE_CHECKING:
     from src.config._global import Config as ProjectConfig
     from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
-from src.infra.db.session import get_async_session
+from src.infra.ai.client import GemmaChatClient
 from src.infra.db.repository import LawChunkRepository
+from src.infra.db.session import get_async_session
 
 from src.service.document import DocumentProcessorService
 
@@ -39,6 +40,25 @@ def get_embedding_client(request: Request) -> "SentenceTransformerEmbeddingClien
     """
 
     return request.app.state.embedding_client
+
+
+def get_ai_client(
+    request: Request, config: "ProjectConfig" = Depends(get_config)
+) -> GemmaChatClient:
+    """
+    Return a configured instance of the AI chat client.
+
+    Args:
+        request: Current FastAPI request object.
+        config: Resolved project configuration.
+
+    Returns:
+        An instance of the AI chat client initialized with the provided config.
+    """
+
+    return GemmaChatClient(
+        model_name=config.ai.AI_MODEL_NAME, server_url=config.ai.AI_SERVER_URL
+    )
 
 
 async def get_db(request: Request, config: "ProjectConfig" = Depends(get_config)):
@@ -94,3 +114,6 @@ def document_processor_service(
 DocumentProcessorServiceDependency = Annotated[
     DocumentProcessorService, Depends(document_processor_service)
 ]
+
+
+AIClientDependency = Annotated["GemmaChatClient", Depends(get_ai_client)]

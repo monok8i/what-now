@@ -1,12 +1,13 @@
 """Global configuration container for the application.
 
-This module lazily instantiates API, embedding, and database
+This module lazily instantiates API, AI, embedding, and database
 configuration objects and exposes them through a single shared ``config``
 instance.
 """
 
 from functools import cached_property
 
+from src.infra.ai.config import Config as AIConfig
 from src.infra.embeddings.config import Config as EmbeddingsConfig
 from src.infra.db.config import Config as DBConfig
 from src.api.config import Config as APIConfig
@@ -27,6 +28,16 @@ class Config:
             API configuration object.
         """
         return APIConfig()  # type: ignore
+
+    @cached_property
+    def ai(self) -> AIConfig:
+        """Return the configuration used by the AI chat client.
+
+        Returns:
+            AI configuration object.
+        """
+
+        return AIConfig()  # type: ignore
 
     @cached_property
     def embeddings(self) -> EmbeddingsConfig:

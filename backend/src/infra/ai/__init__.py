@@ -1,0 +1,1 @@
+"""AI chat client infrastructure."""
