@@ -92,6 +92,20 @@ class FirstAnswerResponse(BaseModel):
     message: str
 
 
+class ChatClientMessage(BaseModel):
+    """Incoming chat message from the websocket client."""
+
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class ChatServerMessage(BaseModel):
+    """Outgoing websocket event sent by the server."""
+
+    type: Literal["ready", "assistant", "error"]
+    message: str
+    total_chunks: int | None = None
+
+
 class UserFormRequest(BaseModel):
     """Request model for caregiver questionnaire data."""
 

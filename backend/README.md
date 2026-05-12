@@ -17,6 +17,9 @@ POSTGRES_DB=hackujstat
 # AI (Required)
 OPENROUTER_API_KEY=sk-or-...   # Your OpenRouter API key
 OPENROUTER_AI_MODEL="google/gemini-2.5-flash-lite-preview-09-2025"
+
+# Embeddings
+EMBEDDING_MODEL_NAME="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
 ```
 
 ## Getting Started with Docker Compose

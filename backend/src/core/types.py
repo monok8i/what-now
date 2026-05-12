@@ -38,3 +38,11 @@ class FirstAnswerResult:
 
     total_chunks: int
     message: str
+
+
+@dataclass(slots=True)
+class ChatReplyResult:
+    """Structured result of a chat turn."""
+
+    total_chunks: int
+    message: str

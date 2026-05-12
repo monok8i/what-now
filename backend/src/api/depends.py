@@ -2,7 +2,8 @@
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends
+from starlette.requests import HTTPConnection
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,44 +15,46 @@ from src.infra.db.repository import LawChunkRepository
 from src.infra.db.session import get_async_session
 
 from src.service.document import DocumentProcessorService
+from src.service.chat import ChatService
 from src.service.first_answer import FirstAnswerService
 from src.service.search import SearchService
 
 
-def get_config(request: Request) -> "ProjectConfig":
+def get_config(connection: HTTPConnection) -> "ProjectConfig":
     """Return the shared application configuration stored on app state.
 
     Args:
-        request: Current FastAPI request object.
+        connection: Current HTTP or WebSocket connection object.
 
     Returns:
         The shared project configuration object stored on ``app.state``.
     """
 
-    return request.app.state.project_config
+    return connection.app.state.project_config
 
 
-def get_embedding_client(request: Request) -> "SentenceTransformerEmbeddingClient":
+def get_embedding_client(
+    connection: HTTPConnection,
+) -> "SentenceTransformerEmbeddingClient":
     """Return the shared embedding client stored on app state.
 
     Args:
-        request: Current FastAPI request object.
+        connection: Current HTTP or WebSocket connection object.
 
     Returns:
         A sentence embedding client initialized during application startup.
     """
 
-    return request.app.state.embedding_client
+    return connection.app.state.embedding_client
 
 
 def get_ai_client(
-    request: Request, config: "ProjectConfig" = Depends(get_config)
+    config: "ProjectConfig" = Depends(get_config),
 ) -> GemmaChatClient:
     """
     Return a configured instance of the AI chat client.
 
     Args:
-        request: Current FastAPI request object.
     Returns:
         The shared AI chat client stored on application state.
     """
@@ -61,17 +64,20 @@ def get_ai_client(
     )
 
 
-async def get_db(request: Request, config: "ProjectConfig" = Depends(get_config)):
+async def get_db(config: "ProjectConfig" = Depends(get_config)):
     """Yield an async database session bound to the current engine.
 
     Args:
-        request: Current FastAPI request object.
         config: Resolved project configuration.
 
     Yields:
         An active SQLAlchemy async session.
     """
-    async for session in get_async_session(request.app.state.project_config.db.ENGINE):
+    engine = config.db.ENGINE
+    if engine is None:
+        raise RuntimeError("Database engine is not configured")
+
+    async for session in get_async_session(engine):
         yield session
 
 
@@ -145,3 +151,17 @@ def first_answer_service(
 FirstAnswerServiceDependency = Annotated[
     FirstAnswerService, Depends(first_answer_service)
 ]
+
+
+def chat_service(
+    ai_client: GemmaChatClient = Depends(get_ai_client),
+    search_service: SearchService = Depends(search_service),
+):
+    """Create the service used by the websocket chat endpoint."""
+
+    from src.service.chat import ChatService
+
+    return ChatService(ai_client=ai_client, search_service=search_service)
+
+
+ChatServiceDependency = Annotated[ChatService, Depends(chat_service)]

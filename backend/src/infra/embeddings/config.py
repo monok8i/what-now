@@ -12,7 +12,9 @@ class Config(BaseEnvConfig):
         EMBEDDING_NORMALIZE: Whether to L2-normalize embeddings before returning them.
     """
 
-    EMBEDDING_MODEL_NAME: str
+    EMBEDDING_MODEL_NAME: str = (
+        "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
     EMBEDDING_DEVICE: str | None = None
     EMBEDDING_NORMALIZE: bool = True
     EMBEDDING_BATCH_SIZE: int = 100

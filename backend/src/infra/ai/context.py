@@ -14,3 +14,7 @@ Convert the caregiver form into one short Czech sentence that summarizes the use
 GENERATE_ANSWER_PROMPT = """
 Answer the user using only the retrieved sources and the user query. Keep the reply in Czech, practical, and concise. Cite the legal source for each important claim using the document number and year, and include page or chunk metadata when it is available. If the sources are insufficient, say so clearly.
 """
+
+GENERATE_CHAT_PROMPT = """
+Answer the user's latest message using the recent conversation and the retrieved sources. Keep the reply in Czech, practical, and concise. Use the conversation only as context and do not invent facts outside the provided sources.
+"""

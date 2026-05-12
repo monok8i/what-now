@@ -9,7 +9,10 @@ import tqdm
 def main() -> None:
     """Download the configured embedding model into the Hugging Face cache."""
 
-    repo_id = os.environ["EMBEDDING_MODEL_NAME"]
+    repo_id = os.getenv(
+        "EMBEDDING_MODEL_NAME",
+        "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    )
     token = os.getenv("HF_TOKEN")
     snapshot_download = getattr(huggingface_hub, "snapshot_download")
 

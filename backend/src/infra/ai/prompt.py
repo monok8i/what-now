@@ -1,12 +1,14 @@
 """Prompt templates used by the AI pipeline."""
 
 import json
+from collections.abc import Sequence
 
 from src.core.types import SearchChunkResult, SearchResultSet
 
 from .context import (
     BASE_PROMPT,
     GENERATE_ANSWER_PROMPT,
+    GENERATE_CHAT_PROMPT,
     GENERATE_FORM_PROMPT,
 )
 
@@ -72,5 +74,69 @@ def generated_answer_prompt(
             f"RETRIEVED SOURCES (showing up to {max_sources} of {len(search_results.results)}):\n"
             + json.dumps(sources, ensure_ascii=False, indent=2),
             "RULES: Use the source metadata in the answer. Prefer short citations like 'Zákon 108/2006 Sb.' or 'Sb. 108/2006, s. X'. Do not invent missing source details.",
+        ]
+    )
+
+
+def _serialize_history(
+    history: Sequence[dict[str, str]],
+    max_turns: int,
+) -> list[dict[str, str]]:
+    return [
+        {"role": turn["role"], "content": turn["content"]}
+        for turn in history[-max_turns:]
+    ]
+
+
+def generated_chat_query_prompt(
+    user_message: str,
+    history: Sequence[dict[str, str]],
+    *,
+    max_turns: int = 6,
+) -> str:
+    """Build a compact retrieval prompt for the latest chat turn."""
+
+    payload = {
+        "history": _serialize_history(history, max_turns=max_turns),
+        "latest_message": user_message,
+    }
+
+    return "\n\n".join(
+        [
+            BASE_PROMPT.strip(),
+            GENERATE_CHAT_PROMPT.strip(),
+            "Convert the latest user message and the short history into one search query.",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+        ]
+    )
+
+
+def generated_chat_answer_prompt(
+    user_message: str,
+    history: Sequence[dict[str, str]],
+    search_results: SearchResultSet,
+    *,
+    max_sources: int = 8,
+    max_turns: int = 6,
+) -> str:
+    """Build the final answer prompt for a chat turn."""
+
+    payload = {
+        "history": _serialize_history(history, max_turns=max_turns),
+        "latest_message": user_message,
+    }
+    sources = [
+        _serialize_chunk(chunk) for chunk in search_results.results[:max_sources]
+    ]
+
+    return "\n\n".join(
+        [
+            BASE_PROMPT.strip(),
+            GENERATE_CHAT_PROMPT.strip(),
+            "Use the conversation context and retrieved sources to answer the latest message.",
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            f"RETRIEVED SOURCES (showing up to {max_sources} of {len(search_results.results)}):\n"
+            + json.dumps(sources, ensure_ascii=False, indent=2),
+            "RULES: Prefer short citations when you rely on a source. If the conversation is missing important context, ask one focused follow-up question instead of guessing.",
         ]
     )
