@@ -13,5 +13,5 @@ class Config(BaseEnvConfig):
     """
 
     AI_MODEL_NAME: str
-    AI_SERVER_URL: str = "http://127.0.0.1:11434/api/chat"
+    AI_SERVER_URL: str
     AI_REQUEST_TIMEOUT: float = 60.0

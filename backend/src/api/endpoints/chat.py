@@ -5,24 +5,9 @@ from pydantic import ValidationError
 
 from src.api.depends import ChatServiceDependency
 from src.api.schemas import ChatClientMessage, ChatServerMessage
-from src.service.chat import ChatService
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-
-async def _generate_chat_reply(
-    chat_service: ChatService,
-    user_message: str,
-    history: list[dict[str, str]] | None = None,
-) -> ChatServerMessage:
-    result = await chat_service.reply(user_message=user_message, history=history)
-
-    return ChatServerMessage(
-        type="assistant",
-        message=result.message,
-        total_chunks=result.total_chunks,
-    )
 
 
 @router.post(
@@ -33,7 +18,16 @@ async def _generate_chat_reply(
 async def chat_message(payload: ChatClientMessage, chat_service: ChatServiceDependency):
     """Generate a single chat reply for Swagger and simple clients."""
 
-    return await _generate_chat_reply(chat_service, payload.message)
+    result = await chat_service.reply(
+        user_message=payload.message,
+        history=None,
+    )
+
+    return ChatServerMessage(
+        type="assistant",
+        message=result.message,
+        total_chunks=result.total_chunks,
+    )
 
 
 @router.websocket("/ws")
@@ -43,6 +37,7 @@ async def chat_socket(websocket: WebSocket, chat_service: ChatServiceDependency)
     await websocket.accept()
 
     history: list[dict[str, str]] = []
+
     await websocket.send_json(
         ChatServerMessage(
             type="ready",
@@ -57,17 +52,24 @@ async def chat_socket(websocket: WebSocket, chat_service: ChatServiceDependency)
 
             history.append({"role": "user", "content": client_message.message})
 
-            response = await _generate_chat_reply(
-                chat_service,
+            result = await chat_service.reply(
                 user_message=client_message.message,
                 history=history,
+            )
+
+            response = ChatServerMessage(
+                type="assistant",
+                message=result.message,
+                total_chunks=result.total_chunks,
             )
 
             history.append({"role": "assistant", "content": response.message})
 
             await websocket.send_json(response.model_dump())
+
     except WebSocketDisconnect:
         return
+
     except ValidationError:
         await websocket.send_json(
             ChatServerMessage(
@@ -76,6 +78,7 @@ async def chat_socket(websocket: WebSocket, chat_service: ChatServiceDependency)
             ).model_dump()
         )
         await websocket.close(code=1003)
+
     except Exception as exc:
         await websocket.send_json(
             ChatServerMessage(type="error", message=str(exc)).model_dump()
