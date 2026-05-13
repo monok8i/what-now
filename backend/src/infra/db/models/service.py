@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, Numeric, String, Text
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from pgvector.sqlalchemy import Vector  # type: ignore
 
 from src.infra.db.mixins import IdIntegerMixin
@@ -53,10 +53,6 @@ class SocialService(Base, IdIntegerMixin):
 
 class ServiceLocation(Base, IdIntegerMixin):
     """Location of a social service."""
-
-    @declared_attr.directive
-    def __tablename__(cls) -> str:
-        return "service_locations"
 
     __table_args__ = (
         Index("ix_service_locations_service_name", "service_name"),

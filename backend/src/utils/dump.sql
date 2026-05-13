@@ -24,7 +24,7 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION vector; Type: COMMENT; Schema: -; Owner:
 --
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
@@ -37,13 +37,6 @@ SET default_table_access_method = heap;
 --
 -- Name: alembic_version; Type: TABLE; Schema: public; Owner: backend
 --
-
-CREATE TABLE public.alembic_version (
-    version_num character varying(32) NOT NULL
-);
-
-
-ALTER TABLE public.alembic_version OWNER TO backend;
 
 --
 -- Name: lawchunk; Type: TABLE; Schema: public; Owner: backend
@@ -244,11 +237,6 @@ ALTER TABLE ONLY public.socialservice ALTER COLUMN id SET DEFAULT nextval('publi
 --
 -- Data for Name: alembic_version; Type: TABLE DATA; Schema: public; Owner: backend
 --
-
-COPY public.alembic_version (version_num) FROM stdin;
-ef906874e646
-\.
-
 
 --
 -- Data for Name: lawchunk; Type: TABLE DATA; Schema: public; Owner: backend
@@ -3047,10 +3035,6 @@ SELECT pg_catalog.setval('public.socialservice_id_seq', 633, true);
 -- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: backend
 --
 
-ALTER TABLE ONLY public.alembic_version
-    ADD CONSTRAINT alembic_version_pkc PRIMARY KEY (version_num);
-
-
 --
 -- Name: lawchunk lawchunk_pkey; Type: CONSTRAINT; Schema: public; Owner: backend
 --
@@ -3200,4 +3184,3 @@ ALTER TABLE ONLY public.servicetargetgroup
 --
 -- PostgreSQL database dump complete
 --
-
