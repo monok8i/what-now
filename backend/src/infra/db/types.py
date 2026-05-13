@@ -1,6 +1,10 @@
 """Typed structures shared by the database layer."""
 
-from typing import NotRequired, TypedDict
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, NotRequired, TypedDict
+
+if TYPE_CHECKING:
+    from .models.service import SocialService
 
 
 class LawChunkType(TypedDict):
@@ -35,3 +39,42 @@ class LawChunkType(TypedDict):
     chunk_index: NotRequired[int | None]
     section_title: NotRequired[str | None]
     source_filename: NotRequired[str | None]
+
+
+@dataclass(slots=True)
+class ServiceLocationSummary:
+    """Lightweight location payload used by the map list endpoint."""
+
+    id: int
+    service_id: int
+    provider_id: int
+    street: str | None
+    number: str | None
+    district: str | None
+    municipality: str | None
+    postal_code: str | None
+    region: str | None
+    service_name: str | None
+    lat: float | None
+    lon: float | None
+    distance_km: float | None = None
+
+
+@dataclass(slots=True)
+class ServiceListRecord:
+    """Single service row returned by the map list endpoint."""
+
+    service: "SocialService"
+    location: ServiceLocationSummary | None
+    locations_count: int
+    target_groups_count: int
+    distance_km: float | None
+    semantic_distance: float | None = None
+
+
+@dataclass(slots=True)
+class ServiceListResult:
+    """Paginated map service result set."""
+
+    items: list[ServiceListRecord]
+    total: int

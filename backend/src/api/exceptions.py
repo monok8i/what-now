@@ -27,6 +27,22 @@ class SearchError(HTTPException):
         )
 
 
+class MapServiceError(HTTPException):
+    def __init__(self, detail: str = "Failed to load services.") -> None:
+        super().__init__(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail,
+        )
+
+
+class MapServiceNotFoundError(HTTPException):
+    def __init__(self, detail: str = "Service not found.") -> None:
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=detail,
+        )
+
+
 class UnsupportedMediaTypeError(HTTPException):
     def __init__(self, detail: str = "Unsupported media type.") -> None:
         super().__init__(

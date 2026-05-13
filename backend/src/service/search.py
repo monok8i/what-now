@@ -6,7 +6,7 @@ from src.core.types import SearchChunkResult, SearchResultSet
 from src.core.exceptions import SearchServiceError
 
 if TYPE_CHECKING:
-    from src.infra.db.repository import LawChunkRepository
+    from src.infra.db.repository.lawchunk import LawChunkRepository
     from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
 
