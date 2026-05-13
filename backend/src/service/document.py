@@ -24,7 +24,7 @@ from src.core.exceptions import (
 from src.infra.db.types import LawChunkType
 
 if TYPE_CHECKING:
-    from src.infra.db.repository import LawChunkRepository
+    from src.infra.db.repository.lawchunk import LawChunkRepository
     from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
 

@@ -1,19 +1,15 @@
 """Laws endpoints for the API."""
 
-from typing import Annotated
-from fastapi import APIRouter, Depends, File, UploadFile, status, Body
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from src.api.schemas import (
-    FirstAnswerResponse,
     LawChunkSearchResult,
     LawSearchRequest,
     LawSearchResponse,
     LawUploadResponse,
-    UserFormRequest,
 )
 from src.api.depends import (
     DocumentProcessorServiceDependency,
-    FirstAnswerServiceDependency,
     SearchServiceDependency,
 )
 from src.api.exceptions import (
@@ -27,7 +23,7 @@ from src.utils.file import extract_file_type
 router = APIRouter(prefix="/laws", tags=["laws"])
 
 
-@router.get("/health", tags=["healthcheck"], status_code=status.HTTP_200_OK)
+@router.get("/health", status_code=status.HTTP_200_OK)
 async def health_check():
     """Return a lightweight health status for the laws API slice.
 
@@ -126,28 +122,3 @@ async def search_laws(
             for chunk in result_set.results
         ],
     )
-
-
-@router.post(
-    "/answer", response_model=FirstAnswerResponse, status_code=status.HTTP_200_OK
-)
-async def first_answer(
-    user_form: Annotated[UserFormRequest, Body(...)],
-    answer_service: FirstAnswerServiceDependency,
-):
-    """Generate the first AI answer from the submitted questionnaire.
-
-    Args:
-        user_form: Structured caregiver questionnaire used to build the query
-            prompt for retrieval and answer generation.
-
-    Returns:
-        A single generated sentence based on the submitted form and retrieved sources.
-    """
-
-    try:
-        result = await answer_service.first_answer(user_form)
-    except Exception as e:
-        raise SearchError(detail=str(e)) from e
-
-    return FirstAnswerResponse(total_chunks=result.total_chunks, message=result.message)

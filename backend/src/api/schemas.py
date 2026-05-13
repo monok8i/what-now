@@ -1,8 +1,9 @@
 """Pydantic models used by the API request and response payloads."""
 
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LawUploadResponse(BaseModel):
@@ -90,6 +91,9 @@ class FirstAnswerResponse(BaseModel):
 
     total_chunks: int
     message: str
+    map_services: list["MapServiceListItemResponse"] = Field(
+        default_factory=list["MapServiceListItemResponse"]
+    )
 
 
 class ChatClientMessage(BaseModel):
@@ -104,6 +108,121 @@ class ChatServerMessage(BaseModel):
     type: Literal["ready", "assistant", "error"]
     message: str
     total_chunks: int | None = None
+
+
+class MapServiceListRequest(BaseModel):
+    """Query parameters for browsing services on the map API."""
+
+    limit: int = Field(default=25, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+    source_service_id: int | None = Field(default=None, ge=1)
+    provider_id: int | None = Field(default=None, ge=1)
+    service_type_id: int | None = Field(default=None, ge=1)
+
+    identifier: str | None = Field(default=None, min_length=1)
+    q: str | None = Field(default=None, min_length=1)
+    municipality: str | None = Field(default=None, min_length=1)
+    region: str | None = Field(default=None, min_length=1)
+
+    active_only: bool = True
+
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    radius_km: float | None = Field(default=None, gt=0, le=1000)
+
+    @model_validator(mode="after")
+    def validate_geo_coordinates(self) -> "MapServiceListRequest":
+        if (self.lat is None) ^ (self.lon is None):
+            raise ValueError("lat and lon must be provided together")
+
+        return self
+
+
+class MapServiceSearchRequest(BaseModel):
+    """Prompt-based search request that will be converted to an embedding."""
+
+    limit: int = Field(default=25, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+    prompt: str = Field(min_length=1)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    radius_km: float = Field(gt=0, le=1000)
+
+
+class MapServiceBaseResponse(BaseModel):
+    """Shared service fields returned by map endpoints."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    source_service_id: int
+    identifier: str
+    provider_id: int
+    provider_name: str
+    provider_ico: str | None
+    service_type_id: int
+    active_from: date
+    active_to: date | None
+    region_scope_by_address: bool
+
+
+class MapLocationResponse(BaseModel):
+    """Service location payload used by map endpoints."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
+    provider_id: int
+    street: str | None
+    number: str | None
+    district: str | None
+    municipality: str | None
+    postal_code: str | None
+    region: str | None
+    service_name: str | None
+    lat: float | None
+    lon: float | None
+    distance_km: float | None = None
+
+
+class MapTargetGroupResponse(BaseModel):
+    """Service target-group payload used by map endpoints."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
+    source_group_id: int
+    description: str | None
+
+
+class MapServiceListItemResponse(MapServiceBaseResponse):
+    """A single service row in the map list response."""
+
+    locations_count: int
+    target_groups_count: int
+    distance_km: float | None = None
+    location: MapLocationResponse | None = None
+
+
+class MapServiceListResponse(BaseModel):
+    """Paginated list of services for the map API."""
+
+    limit: int
+    offset: int
+    total: int
+    items: list[MapServiceListItemResponse]
+
+
+class MapServiceDetailResponse(MapServiceBaseResponse):
+    """Full service card with all locations and target groups."""
+
+    locations_count: int
+    target_groups_count: int
+    locations: list[MapLocationResponse]
+    target_groups: list[MapTargetGroupResponse]
 
 
 class UserFormRequest(BaseModel):
@@ -127,3 +246,13 @@ class UserFormRequest(BaseModel):
     # Block 4: "Tvoje situace"
     employment_status: str = Field(..., description="Pracuješ?")
     main_concerns: list[str] = Field(..., description="Co tě teď nejvíc trápí? (max 2)")
+
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def validate_geo_coordinates(self) -> "UserFormRequest":
+        if (self.lat is None) ^ (self.lon is None):
+            raise ValueError("lat and lon must be provided together")
+
+        return self

@@ -1,6 +1,10 @@
 """Core types used across the project."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.infra.db.types import ServiceListRecord
 
 
 @dataclass(slots=True)
@@ -38,6 +42,7 @@ class FirstAnswerResult:
 
     total_chunks: int
     message: str
+    map_services: list["ServiceListRecord"] = field(default_factory=list)
 
 
 @dataclass(slots=True)

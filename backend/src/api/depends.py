@@ -11,7 +11,8 @@ if TYPE_CHECKING:
     from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 
 from src.infra.ai.client import GemmaChatClient
-from src.infra.db.repository import LawChunkRepository
+from src.infra.db.repository.lawchunk import LawChunkRepository
+from src.infra.db.repository.service import ServiceRepository
 from src.infra.db.session import get_async_session
 
 from src.service.document import DocumentProcessorService
@@ -96,6 +97,14 @@ def get_law_chunk_repository(
     return LawChunkRepository(session=session)
 
 
+def get_service_repository(
+    session: "AsyncSession" = Depends(get_db),
+) -> ServiceRepository:
+    """Create the repository used for browsing social services."""
+
+    return ServiceRepository(session=session)
+
+
 def document_processor_service(
     embedding_client: "SentenceTransformerEmbeddingClient" = Depends(
         get_embedding_client
@@ -117,14 +126,6 @@ def document_processor_service(
     )
 
 
-DocumentProcessorServiceDependency = Annotated[
-    DocumentProcessorService, Depends(document_processor_service)
-]
-
-
-AIClientDependency = Annotated["GemmaChatClient", Depends(get_ai_client)]
-
-
 def search_service(
     embedding_client: "SentenceTransformerEmbeddingClient" = Depends(
         get_embedding_client
@@ -136,21 +137,22 @@ def search_service(
     return SearchService(embedding_client=embedding_client, repository=repository)
 
 
-SearchServiceDependency = Annotated[SearchService, Depends(search_service)]
-
-
 def first_answer_service(
     ai_client: GemmaChatClient = Depends(get_ai_client),
     search_service: SearchService = Depends(search_service),
+    embedding_client: "SentenceTransformerEmbeddingClient" = Depends(
+        get_embedding_client
+    ),
+    service_repository: ServiceRepository = Depends(get_service_repository),
 ):
     """Create the service that turns a form into the first assistant sentence."""
 
-    return FirstAnswerService(ai_client=ai_client, search_service=search_service)
-
-
-FirstAnswerServiceDependency = Annotated[
-    FirstAnswerService, Depends(first_answer_service)
-]
+    return FirstAnswerService(
+        ai_client=ai_client,
+        search_service=search_service,
+        embedding_client=embedding_client,
+        service_repository=service_repository,
+    )
 
 
 def chat_service(
@@ -164,4 +166,28 @@ def chat_service(
     return ChatService(ai_client=ai_client, search_service=search_service)
 
 
+DocumentProcessorServiceDependency = Annotated[
+    DocumentProcessorService, Depends(document_processor_service)
+]
+
+
+AIClientDependency = Annotated["GemmaChatClient", Depends(get_ai_client)]
+
+
+FirstAnswerServiceDependency = Annotated[
+    FirstAnswerService, Depends(first_answer_service)
+]
+
 ChatServiceDependency = Annotated[ChatService, Depends(chat_service)]
+
+EmbeddingClientDependency = Annotated[
+    "SentenceTransformerEmbeddingClient", Depends(get_embedding_client)
+]
+
+
+SearchServiceDependency = Annotated[SearchService, Depends(search_service)]
+
+
+ServiceRepositoryDependency = Annotated[
+    ServiceRepository, Depends(get_service_repository)
+]

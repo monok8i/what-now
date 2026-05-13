@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column, relationship
+from pgvector.sqlalchemy import Vector  # type: ignore
 
 from src.infra.db.mixins import IdIntegerMixin
 from src.infra.db.models.base import Base
@@ -105,6 +106,7 @@ class ServiceTargetGroup(Base, IdIntegerMixin):
 
     source_group_id: Mapped[int] = mapped_column(Integer, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
 
     service: Mapped["SocialService"] = relationship(back_populates="target_groups")
 
