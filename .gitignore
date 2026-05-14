@@ -16,6 +16,9 @@ venv.bak/
 # Datasets
 datasets/
 
+# Dumps
+*.sql
+
 # Editor
 .vscode/
 .idea/
