@@ -20,6 +20,7 @@ from sqlalchemy import delete
 from src.core.config._global import config
 from src.infra.db.models import ServiceLocation, ServiceTargetGroup, SocialService
 from src.infra.db.session import get_async_session
+from src.infra.embeddings.client import SentenceTransformerEmbeddingClient
 from src.utils.coords import normalize_optional_text, parse_optional_decimal
 
 
@@ -64,6 +65,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Parse the CSV files and print counts without writing to the database.",
+    )
+    parser.add_argument(
+        "--embedding-batch-size",
+        type=int,
+        default=config.embeddings.EMBEDDING_BATCH_SIZE,
+        help="Batch size used when generating ServiceTargetGroup embeddings.",
     )
     return parser
 
@@ -157,6 +164,51 @@ def choose_service_location_name(service: dict[str, Any]) -> str | None:
         if isinstance(chosen_location.get("nazevZarizeni"), str)
         else None
     )
+
+
+async def backfill_target_group_embeddings(
+    target_groups: list[ServiceTargetGroup],
+    *,
+    batch_size: int,
+) -> int:
+    """Generate embeddings for imported target-group descriptions."""
+
+    groups_with_description = [
+        target_group for target_group in target_groups if target_group.description
+    ]
+    if not groups_with_description:
+        return 0
+
+    embedding_client = SentenceTransformerEmbeddingClient(
+        model_name=config.embeddings.EMBEDDING_MODEL_NAME,
+        device=config.embeddings.EMBEDDING_DEVICE,
+        normalize_embeddings=config.embeddings.EMBEDDING_NORMALIZE,
+        batch_size=batch_size,
+    )
+
+    updated = 0
+    for index in range(0, len(groups_with_description), batch_size):
+        batch_groups = groups_with_description[index : index + batch_size]
+        batch_texts = [
+            target_group.description.strip()
+            for target_group in batch_groups
+            if target_group.description
+        ]
+        if not batch_texts:
+            continue
+
+        embeddings = await embedding_client.generate_embeddings(batch_texts)
+        if len(embeddings) != len(batch_groups):
+            raise RuntimeError(
+                "Embedding count mismatch: "
+                f"got {len(embeddings)} vectors for {len(batch_groups)} target groups."
+            )
+
+        for target_group, embedding in zip(batch_groups, embeddings):
+            target_group.embedding = embedding
+            updated += 1
+
+    return updated
 
 
 def build_models(
@@ -265,6 +317,7 @@ def get_unmatched_csv_service_ids(
 async def import_rows(
     service_records: list[dict[str, Any]],
     address_rows: dict[int, dict[str, str]],
+    embedding_batch_size: int,
 ) -> None:
     """Replace existing rows for the imported services and write fresh ones."""
 
@@ -279,6 +332,7 @@ async def import_rows(
     if engine is None:
         raise RuntimeError("Database engine is not configured.")
 
+    embeddings_updated = 0
     async for session in get_async_session(engine):
         await session.execute(
             delete(ServiceTargetGroup).where(
@@ -296,11 +350,16 @@ async def import_rows(
         session.add_all(services)
         session.add_all(locations)
         session.add_all(target_groups)
+        embeddings_updated = await backfill_target_group_embeddings(
+            target_groups,
+            batch_size=embedding_batch_size,
+        )
         await session.flush()
 
     print(
         f"Imported {len(services)} services, {len(locations)} locations, and {len(target_groups)} target groups from {len(set(service_ids))} service IDs."
     )
+    print(f"Generated embeddings for {embeddings_updated} target groups.")
 
 
 async def main() -> None:
@@ -323,7 +382,11 @@ async def main() -> None:
             )
         return
 
-    await import_rows(service_records, address_rows)
+    await import_rows(
+        service_records,
+        address_rows,
+        embedding_batch_size=args.embedding_batch_size,
+    )
 
 
 if __name__ == "__main__":

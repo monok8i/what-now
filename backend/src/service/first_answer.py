@@ -16,10 +16,10 @@ if TYPE_CHECKING:
 class FirstAnswerService:
     """Turn a submitted form into a searched, source-backed AI response."""
 
-    SEARCH_LIMIT = 8
+    SEARCH_LIMIT = 100
     MAX_DISTANCE = 0.3
-    MAP_SEARCH_LIMIT = 8
-    MAP_SEARCH_RADIUS_KM = 10.0
+    MAP_SEARCH_LIMIT = 100
+    MAP_SEARCH_RADIUS_KM = 100
 
     def __init__(
         self,
