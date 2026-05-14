@@ -17,7 +17,7 @@ class ChatService:
     """Answer chat turns with retrieval-augmented context."""
 
     SEARCH_LIMIT = 8
-    MAX_DISTANCE = 0.3
+    MAX_DISTANCE = 0.45
     MAX_HISTORY_TURNS = 6
 
     def __init__(

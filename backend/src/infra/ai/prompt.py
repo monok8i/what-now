@@ -5,31 +5,52 @@ from collections.abc import Sequence
 
 from src.core.types import SearchChunkResult, SearchResultSet
 
-from .context import (
-    BASE_PROMPT,
-    GENERATE_ANSWER_PROMPT,
-    GENERATE_CHAT_PROMPT,
-    GENERATE_FORM_PROMPT,
-)
+from .context import BASE_PROMPT, GENERATE_ANSWER_PROMPT, GENERATE_CHAT_PROMPT
 
 
 def generated_form_prompt(form: dict[str, str | list[str]]) -> str:
-    """Generate a compact search prompt from the submitted form data.
+    """Generate a compact Czech search query from the submitted form data.
 
     Args:
         form: Structured caregiver questionnaire used to build the query.
 
     Returns:
-        A short Czech user-style prompt for retrieval.
+        A short Czech sentence for retrieval and downstream answering.
     """
 
-    return "\n\n".join(
-        [
-            BASE_PROMPT.strip(),
-            GENERATE_FORM_PROMPT.strip(),
-            json.dumps(form, ensure_ascii=False, indent=2),
-        ]
-    )
+    def as_text(value: str | list[str] | int | None) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            return ", ".join(item for item in value if item)
+        return str(value).strip()
+
+    relationship = as_text(form.get("relationship"))
+    age = as_text(form.get("care_recipient_age"))
+    gender = as_text(form.get("care_recipient_gender"))
+    self_sufficiency = as_text(form.get("self_sufficiency"))
+    allowance = as_text(form.get("has_care_allowance"))
+    duration = as_text(form.get("situation_duration"))
+    living_arrangement = as_text(form.get("living_arrangement"))
+    postal_code = as_text(form.get("postal_code"))
+    additional_help = as_text(form.get("additional_help"))
+    employment_status = as_text(form.get("employment_status"))
+    main_concerns = as_text(form.get("main_concerns"))
+
+    parts = [
+        f"{relationship} pečuje o {age}letou osobu".strip(),
+        gender,
+        f"stav: {self_sufficiency}" if self_sufficiency else "",
+        f"příspěvek na péči: {allowance}" if allowance else "",
+        f"situace trvá {duration}" if duration else "",
+        f"bydliště: {living_arrangement}" if living_arrangement else "",
+        f"PSČ {postal_code}" if postal_code else "",
+        f"další pomoc: {additional_help}" if additional_help else "",
+        f"zaměstnání: {employment_status}" if employment_status else "",
+        f"řeší: {main_concerns}" if main_concerns else "",
+    ]
+
+    return "; ".join(part for part in parts if part)
 
 
 def _serialize_chunk(chunk: SearchChunkResult) -> dict[str, object]:

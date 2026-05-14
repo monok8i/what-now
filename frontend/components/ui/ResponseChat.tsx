@@ -1,49 +1,91 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { RefreshCcw, CheckCircle2, Loader2, Bot, MapPin, X } from 'lucide-react';
+import type { ReactElement } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { RefreshCcw, CheckCircle2, Info, AlertCircle, FileText, Send, Loader2, Bot, User, Map } from 'lucide-react';
 import remarkGfm from 'remark-gfm';
+import MapWrapper from '@/src/components/MapWrapper';
+
+const LOADING_MESSAGES = [
+    "Analyzujeme vaši situaci...",
+    "Počítáme vaše přesčasové hodiny nad péčí...",
+    "Hledáme jehlu v kupce formulářů...",
+    "Luštíme státní byrokracii a zákony...",
+    "Zjišťujeme, na co všechno máte nárok...",
+    "Ještě chvilinku, státní úřady mají polední pauzu...",
+    "Zpracováváme všechny dostupné možnosti..."
+];
 
 export interface ApiResponse {
+    total_chunks: number;
     message: string;
-    submission_id?: string;
-    total_matches?: number;
-    matching_benefits?: any[];
-    ai_response?: string;
+    map_services: MapServiceResponse[];
 }
+
+type MapServiceLocation = {
+    id: number;
+    service_id: number;
+    provider_id: number;
+    street: string;
+    number: string;
+    district: string;
+    municipality: string;
+    postal_code: string;
+    region: string;
+    service_name: string;
+    lat: number | null;
+    lon: number | null;
+    distance_km: number | null;
+};
+
+export type MapServiceResponse = {
+    source_service_id: number;
+    identifier: string;
+    provider_id: number;
+    provider_name: string;
+    provider_ico: string;
+    service_type_id: number;
+    active_from: string;
+    active_to: string;
+    region_scope_by_address: boolean;
+    locations_count: number;
+    target_groups_count: number;
+    distance_km: number | null;
+    location: MapServiceLocation;
+};
+
+export type UserLocation = {
+    lat: number;
+    lon: number;
+} | null;
 
 interface ResponseChatProps {
     data: ApiResponse | null;
     isLoading?: boolean;
     onReset: () => void;
+    userLocation?: UserLocation;
 }
 
-interface ChatMessage {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    isError?: boolean;
-}
+const MapWrapperWithUserLocation = MapWrapper as unknown as (props: {
+    services?: MapServiceResponse[];
+    userLocation?: UserLocation;
+}) => ReactElement;
 
-export function ResponseChat({ data, isLoading = false, onReset }: ResponseChatProps) {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [inputValue, setInputValue] = useState('');
-    const [isConnecting, setIsConnecting] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
-    const [isTyping, setIsTyping] = useState(false);
+const calculateDistanceKm = (from: { lat: number; lon: number }, to: { lat: number; lon: number }) => {
+    const earthRadiusKm = 6371;
+    const latDelta = ((to.lat - from.lat) * Math.PI) / 180;
+    const lonDelta = ((to.lon - from.lon) * Math.PI) / 180;
+    const startLat = (from.lat * Math.PI) / 180;
+    const endLat = (to.lat * Math.PI) / 180;
+
+    const a =
+        Math.sin(latDelta / 2) * Math.sin(latDelta / 2) +
+        Math.sin(lonDelta / 2) * Math.sin(lonDelta / 2) * Math.cos(startLat) * Math.cos(endLat);
+    return 2 * earthRadiusKm * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+export function ResponseChat({ data, isLoading = false, onReset, userLocation = null }: ResponseChatProps) {
     const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
-
-    const wsRef = useRef<WebSocket | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    const LOADING_MESSAGES = [
-        "Analyzujeme vaši situaci...",
-        "Počítáme vaše přesčasové hodiny nad péčí...",
-        "Hledáme jehlu v kupce formulářů...",
-        "Luštíme státní byrokracii a zákony...",
-        "Zjišťujeme, na co všechno máte nárok...",
-        "Ještě chvilinku, státní úřady mají polední pauzu...",
-        "Zpracováváme všechny dostupné možnosti..."
-    ];
+    const [isMapOpen, setIsMapOpen] = useState(false);
 
     useEffect(() => {
         if (!isLoading) return;
@@ -53,177 +95,79 @@ export function ResponseChat({ data, isLoading = false, onReset }: ResponseChatP
         return () => clearInterval(interval);
     }, [isLoading]);
 
-    // connectWebSocket moved below
-
-    const connectWebSocket = () => {
-        setIsConnecting(true);
-        let wsUrlStr = 'wss://tvuj-produkcni-zapisovy-endpoint.cz/ws/chat';
-        if (typeof window !== 'undefined') {
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname.startsWith('192.168.')) {
-                wsUrlStr = `ws://${hostname}:8001/ws/chat`;
-            }
-        }
-
-        // If there's an env variable for API URL, parse it to build WS URL
-        const envApiUrl = process.env.NEXT_PUBLIC_API_URL;
-        if (envApiUrl) {
-            try {
-                const url = new URL(envApiUrl);
-                wsUrlStr = `${url.protocol === 'https:' ? 'wss:' : 'ws:'}//${url.host}/ws/chat`;
-            } catch (e) {
-                console.error("Invalid NEXT_PUBLIC_API_URL", e);
-            }
-        }
-
-        try {
-            const ws = new WebSocket(wsUrlStr);
-
-            ws.onopen = () => {
-                setIsConnected(true);
-                setIsConnecting(false);
-            };
-
-            ws.onmessage = (event) => {
-                try {
-                    const response = JSON.parse(event.data);
-
-                    if (response.typing !== undefined) {
-                        setIsTyping(response.typing);
-                    }
-
-                    if (response.message) {
-                        setMessages(prev => [
-                            ...prev,
-                            {
-                                id: Date.now().toString(),
-                                role: 'assistant',
-                                content: response.message,
-                                isError: response.error || false
-                            }
-                        ]);
-                        setIsTyping(false);
-                    }
-                } catch (e) {
-                    console.error("Error parsing WS message:", e);
-                }
-            };
-
-            ws.onclose = () => {
-                setIsConnected(false);
-                setIsConnecting(false);
-                wsRef.current = null;
-            };
-
-            ws.onerror = (error) => {
-                console.error("WebSocket error:", error);
-                setIsConnecting(false);
-            };
-
-            wsRef.current = ws;
-        } catch (error) {
-            console.error("Failed to connect to WebSocket:", error);
-            setIsConnecting(false);
-        }
-    };
-
-    // Initialize chat
     useEffect(() => {
-        if (data?.ai_response) {
-            setMessages([
-                {
-                    id: 'initial',
-                    role: 'assistant',
-                    content: data.ai_response,
-                }
-            ]);
-        } else {
-            setMessages([]);
-        }
+        if (!isMapOpen) return;
 
-        // Connect WebSocket on mount
-        if (!wsRef.current) {
-            connectWebSocket();
-        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsMapOpen(false);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = 'hidden';
 
         return () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
+            window.removeEventListener('keydown', handleKeyDown);
+            document.body.style.overflow = '';
         };
-    }, [data]);
+    }, [isMapOpen]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const normalizedMapServices = (data?.map_services ?? []).filter(
+        (service): service is MapServiceResponse => Boolean(service?.location)
+    );
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages, isTyping]);
+    const hasMapServices = normalizedMapServices.length > 0;
 
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
+    const getServiceName = (service: MapServiceResponse) =>
+        service.location.service_name || service.provider_name || 'Služba';
 
-        if (!inputValue.trim()) return;
+    const getServiceAddress = (service: MapServiceResponse) =>
+        [service.location.street, service.location.number, service.location.municipality, service.location.postal_code].filter(Boolean).join(' ');
 
-        const newMessage: ChatMessage = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: inputValue.trim(),
-        };
+    const formatDistance = (distance: number | null) =>
+        typeof distance === 'number' && Number.isFinite(distance) ? `${distance.toFixed(1)} km` : '—';
 
-        setMessages(prev => [...prev, newMessage]);
-        setInputValue('');
-
-        // Send via WebSocket
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            setIsTyping(true);
-            wsRef.current.send(JSON.stringify({ message: newMessage.content }));
-        } else {
-            // Try to reconnect and send
-            connectWebSocket();
-            setTimeout(() => {
-                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                    setIsTyping(true);
-                    wsRef.current.send(JSON.stringify({ message: newMessage.content }));
-                } else {
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            id: Date.now().toString() + '-err',
-                            role: 'assistant',
-                            content: 'Omlouváme se, připojení k serveru selhalo. Zkuste to prosím znovu za chvíli.',
-                            isError: true
-                        }
-                    ]);
-                }
-            }, 1000);
+    const getDistance = (service: MapServiceResponse) => {
+        if (typeof service.distance_km === 'number' && Number.isFinite(service.distance_km)) {
+            return service.distance_km;
         }
+
+        if (
+            userLocation &&
+            typeof service.location.lat === 'number' &&
+            Number.isFinite(service.location.lat) &&
+            typeof service.location.lon === 'number' &&
+            Number.isFinite(service.location.lon)
+        ) {
+            return calculateDistanceKm(userLocation, {
+                lat: service.location.lat,
+                lon: service.location.lon,
+            });
+        }
+
+        return null;
     };
+
+    const formatCoordinate = (coordinate: number | null) =>
+        typeof coordinate === 'number' && Number.isFinite(coordinate) ? coordinate.toFixed(4) : '—';
 
     if (!data && !isLoading) return null;
 
-    const hasMatches = data ? (data.total_matches ?? 0) > 0 : false;
-
     return (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 w-full flex flex-col overflow-hidden min-h-[600px] h-[calc(100vh-160px)]">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 w-full flex flex-col overflow-hidden h-[calc(100vh-160px)]" style={{ minHeight: '600px' }}>
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80 backdrop-blur-md z-10 shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className={`p-2.5 rounded-2xl ${hasMatches ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                        {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : (hasMatches ? <CheckCircle2 className="w-6 h-6" /> : <Info className="w-6 h-6" />)}
+                    <div className="p-2.5 rounded-2xl bg-indigo-100 text-indigo-600">
+                        {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-slate-900">Vyhodnocení a Chat</h2>
+                        <h2 className="text-xl font-bold text-slate-900">Vyhodnocení</h2>
                         <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-slate-500">{isLoading ? 'Zpracováváme vaše údaje...' : (data?.message || 'Zde jsou informace k vaší situaci.')}</p>
-                            {!isLoading && (
-                                <span className="flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-slate-300'}`}></span>
-                                    {isConnected ? 'Připojeno' : 'Odpojeno'}
-                                </span>
-                            )}
+                            <p className="text-sm font-medium text-slate-500">
+                                {isLoading ? 'Zpracováváme vaše údaje...' : `Najdeno ${data?.total_chunks || 0} relevantních zdrojů`}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -237,7 +181,7 @@ export function ResponseChat({ data, isLoading = false, onReset }: ResponseChatP
                 </button>
             </div>
 
-            {/* Content - Chat Messages */}
+            {/* Content - Result Message */}
             <div className="flex-1 overflow-y-auto w-full bg-slate-50/50 p-6 md:p-8 space-y-6">
                 {isLoading ? (
                     <div className="flex-1 w-full h-full flex flex-col justify-center items-center text-center space-y-8 animate-in fade-in duration-500 py-10">
@@ -274,146 +218,150 @@ export function ResponseChat({ data, isLoading = false, onReset }: ResponseChatP
                         </div>
                     </div>
                 ) : (
-                    <>
-                        {/* Welcome message with additional structured data if any */}
-                        {hasMatches && data?.matching_benefits && data.matching_benefits.length > 0 && (
-                            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm mb-6">
-                                <h3 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                                    Nalezené konkrétní dávky
-                                </h3>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    {data.matching_benefits.map((benefit, idx) => (
-                                        <div key={idx} className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex items-start gap-3">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 shrink-0" />
-                                            <div>
-                                                <p className="font-semibold text-slate-900 text-sm">{typeof benefit === 'string' ? benefit : benefit.name || 'Dávka'}</p>
-                                                {benefit.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{benefit.description}</p>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                    <div className="bg-white rounded-2xl p-6 md:p-8 border border-slate-100 shadow-sm">
+                        <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                                <Bot className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                        p: ({ node, ...props }: any) => <p className="text-base md:text-lg leading-relaxed text-slate-700 mb-4" {...props} />,
+                                        h1: ({ node, ...props }: any) => <h1 className="text-2xl font-bold text-slate-900 mt-6 mb-3" {...props} />,
+                                        h2: ({ node, ...props }: any) => <h2 className="text-xl font-bold text-slate-900 mt-5 mb-3" {...props} />,
+                                        h3: ({ node, ...props }: any) => <h3 className="text-lg font-semibold text-slate-900 mt-4 mb-2" {...props} />,
+                                        ul: ({ node, ...props }: any) => <ul className="list-disc list-inside text-slate-700 mb-4 space-y-2" {...props} />,
+                                        ol: ({ node, ...props }: any) => <ol className="list-decimal list-inside text-slate-700 mb-4 space-y-2" {...props} />,
+                                        li: ({ node, ...props }: any) => <li className="text-base md:text-lg text-slate-700" {...props} />,
+                                        blockquote: ({ node, ...props }: any) => <blockquote className="border-l-4 border-indigo-300 bg-indigo-50 pl-4 py-2 my-4 text-slate-700" {...props} />,
+                                        code: ({ node, className, children, ...props }: any) => {
+                                            const isBlockCode = typeof className === 'string' && className.includes('language-');
+
+                                            return isBlockCode ? (
+                                                <code className="bg-slate-100 p-3 rounded block my-4 overflow-x-auto text-sm text-slate-700" {...props}>
+                                                    {children}
+                                                </code>
+                                            ) : (
+                                                <code className="bg-slate-100 px-2 py-1 rounded text-red-600 font-mono text-sm" {...props}>
+                                                    {children}
+                                                </code>
+                                            );
+                                        },
+                                        a: ({ node, ...props }: any) => <a className="text-indigo-600 hover:underline" {...props} />,
+                                        strong: ({ node, ...props }: any) => <strong className="font-bold text-slate-900" {...props} />,
+                                        em: ({ node, ...props }: any) => <em className="italic text-slate-700" {...props} />,
+                                    }}
+                                >
+                                    {data?.message || 'Zde je vaše odpověď od backendu.'}
+                                </ReactMarkdown>
+                            </div>
+                        </div>
+
+                        {hasMapServices && (
+                            <div className="mt-6 border-t border-slate-100 pt-5 flex items-center justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMapOpen(true)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                >
+                                    <MapPin className="h-4 w-4" />
+                                    Переглянути найближчі служби
+                                </button>
                             </div>
                         )}
-
-                        {messages.length === 0 && !hasMatches && !data?.ai_response ? (
-                            <div className="text-center py-12">
-                                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-slate-900">Žádná podrobnější analýza</h3>
-                                <p className="text-slate-500 mt-2">Můžete se zeptat na další detaily pomocí chatu níže.</p>
-                            </div>
-                        ) : (
-                            messages.map((msg, idx) => (
-                                <div key={msg.id || idx} className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                                        {msg.role === 'user' ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
-                                    </div>
-                                    <div className={`max-w-[85%] rounded-2xl p-5 ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-sm' : msg.isError ? 'bg-red-50 border border-red-100 text-red-700 rounded-tl-sm' : 'bg-white border border-slate-100 shadow-sm rounded-tl-sm'}`}>
-                                        {msg.role === 'user' ? (
-                                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                                        ) : (
-                                            <div className="prose prose-sm md:prose-base prose-slate max-w-none prose-p:leading-relaxed prose-a:text-indigo-600 hover:prose-a:underline prose-strong:text-slate-900">
-                                                <ReactMarkdown
-                                                    remarkPlugins={[remarkGfm]}
-                                                    components={{
-                                                        a: ({ ...props }) => {
-                                                            // Map toggle button
-                                                            if (props.href === '#map') {
-                                                                return (
-                                                                    <div className="mt-4 mb-2 flex justify-start not-prose">
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                alert("Zde se na tvé větvi rozbalí komponenta Map.tsx!");
-                                                                                // TODO: Implement actual map toggle state
-                                                                            }}
-                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-medium transition-colors border border-slate-200"
-                                                                        >
-                                                                            <Map className="w-4 h-4 text-indigo-500" />
-                                                                            {props.children || "Zobrazit na mapě"}
-                                                                        </button>
-                                                                    </div>
-                                                                );
-                                                            }
-
-                                                            // If the link text is exactly "ℹ️" and it points to "#info"
-                                                            if (props.href === '#info' && typeof props.children === 'string' && props.children.includes('ℹ️')) {
-                                                                const tooltipText = props.title || "Dodatečné informace";
-                                                                return (
-                                                                    <span className="relative inline-block group ml-1 cursor-help align-middle not-prose">
-                                                                        <Info className="w-4 h-4 text-indigo-500 hover:text-indigo-700 inline" />
-                                                                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs p-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-center shadow-lg pointer-events-none">
-                                                                            {tooltipText}
-                                                                            {/* Base arrow */}
-                                                                            <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></span>
-                                                                        </span>
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            // Default rendering for other links
-                                                            return <a {...props} target="_blank" rel="noopener noreferrer">{props.children}</a>;
-                                                        }
-                                                    }}
-                                                >
-                                                    {msg.content}
-                                                </ReactMarkdown>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-
-                        {isTyping && (
-                            <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                                    <Bot className="w-5 h-5" />
-                                </div>
-                                <div className="bg-white border border-slate-100 shadow-sm rounded-2xl rounded-tl-sm p-5 flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                    <span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                    <span className="w-2 h-2 rounded-full bg-slate-300 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                                </div>
-                            </div>
-                        )}
-
-                        <div ref={messagesEndRef} />
-                    </>
+                    </div>
                 )}
             </div>
 
-            {/* Footer - Chat Input */}
-            <div className="p-4 sm:p-6 border-t border-slate-100 bg-white z-10 shrink-0">
-                <form onSubmit={handleSendMessage} className="relative flex items-end gap-2 max-w-5xl mx-auto w-full">
-                    <textarea
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage(e);
-                            }
-                        }}
-                        placeholder="Napište doplňující zprávu pro chat..."
-                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl px-5 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none overflow-hidden max-h-32 min-h-[56px]"
-                        rows={1}
-                        style={{
-                            height: 'auto',
-                            fieldSizing: 'content'
-                        } as React.CSSProperties}
-                    />
-                    <button
-                        type="submit"
-                        disabled={!inputValue.trim()}
-                        className={`absolute right-2 bottom-2 p-2.5 rounded-xl flex items-center justify-center transition-all ${inputValue.trim()
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100'
-                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                            }`}
+            {isMapOpen && hasMapServices && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-sm"
+                    onClick={() => setIsMapOpen(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Mapa blízkých služeb"
+                >
+                    <div
+                        className="flex h-[88vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+                        onClick={(event) => event.stopPropagation()}
                     >
-                        <Send className="w-5 h-5" />
-                    </button>
-                </form>
-            </div>
+                        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900">
+                                    Zнайдено {normalizedMapServices.length} служб v okruhu 100 kilometrů
+                                </h3>
+                                <p className="text-sm text-slate-500">Kliknutím na bod na mapě zobrazíte detail služby.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsMapOpen(false)}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                                aria-label="Zavřít mapu"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden bg-slate-50 p-4 md:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)] md:p-6">
+                            <div className="min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                <MapWrapperWithUserLocation services={normalizedMapServices} userLocation={userLocation} />
+                            </div>
+                            <div className="min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                <div className="flex h-full flex-col">
+                                    <div className="border-b border-slate-100 px-5 py-4">
+                                        <h4 className="text-base font-semibold text-slate-900">Seznam služeb</h4>
+                                        <p className="text-sm text-slate-500">{normalizedMapServices.length} dostupných výsledků</p>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-4">
+                                        <div className="space-y-3">
+                                            {normalizedMapServices.map((service) => (
+                                                <div
+                                                    key={`${service.source_service_id}-${service.location.id}`}
+                                                    className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/60"
+                                                >
+                                                    <div className="flex items-start justify-between gap-2.5">
+                                                        <div>
+                                                            <h5 className="text-sm font-semibold leading-tight text-slate-900">
+                                                                {getServiceName(service)}
+                                                            </h5>
+                                                            <p className="mt-1 text-xs text-slate-500">
+                                                                {service.location.region || service.location.district || 'Bez regionu'}
+                                                            </p>
+                                                            {getServiceAddress(service) && (
+                                                                <p className="mt-1 text-sm text-slate-600 leading-snug">
+                                                                    {getServiceAddress(service)}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-medium text-slate-500 shadow-sm">
+                                                            {formatCoordinate(service.location.lat)}, {formatCoordinate(service.location.lon)}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                                                        <p>
+                                                            <span className="font-medium text-slate-700">Vzdálenost:</span>{' '}
+                                                            {formatDistance(getDistance(service))}
+                                                        </p>
+                                                        <p>
+                                                            <span className="font-medium text-slate-700">Poboček:</span>{' '}
+                                                            {service.locations_count}
+                                                        </p>
+                                                        <p>
+                                                            <span className="font-medium text-slate-700">Cílové skupiny:</span>{' '}
+                                                            {service.target_groups_count}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

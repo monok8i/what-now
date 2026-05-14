@@ -1,9 +1,20 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ComponentType } from "react";
 
-const Map = dynamic(() => import("./Map"), { ssr: false });
+type UserLocation = {
+    lat: number;
+    lon: number;
+} | null;
 
-export default function MapWrapper() {
-    return <Map />;
+const Map = dynamic(() => import("./Map"), { ssr: false }) as ComponentType<{ services?: unknown[]; userLocation?: UserLocation }>;
+
+interface MapWrapperProps {
+    services?: unknown[];
+    userLocation?: UserLocation;
+}
+
+export default function MapWrapper({ services, userLocation }: MapWrapperProps) {
+    return <Map services={services} userLocation={userLocation} />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     ChevronRight,
     ChevronLeft,
@@ -8,7 +8,6 @@ import {
     HeartPulse,
     Home,
     Briefcase,
-    CheckCircle2,
     Loader2,
 } from "lucide-react";
 import { FormData, initialData } from "@/types/form";
@@ -33,10 +32,25 @@ export default function CaregiverForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [responseData, setResponseData] = useState<ApiResponse | null>(null);
+    const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
 
     const updateData = (fields: Partial<FormData>) => {
         setData((prev) => ({ ...prev, ...fields }));
     };
+
+    useEffect(() => {
+        let isActive = true;
+
+        void getCurrentPosition().then((location) => {
+            if (isActive) {
+                setUserLocation(location);
+            }
+        });
+
+        return () => {
+            isActive = false;
+        };
+    }, []);
 
     const getCurrentPosition = () => {
         if (typeof window === "undefined" || !navigator.geolocation) {
@@ -68,6 +82,7 @@ export default function CaregiverForm() {
         setResponseData(null);
 
         const geo = await getCurrentPosition();
+        setUserLocation(geo);
 
         // Map internal form state to the required API payload structure
         const payload = {
@@ -104,10 +119,7 @@ export default function CaregiverForm() {
                 body: JSON.stringify(payload),
             });
 
-            console.log('Response Status:', response.status);
-
             const responseData = await response.json().catch(() => null);
-            console.log('Response Data:', responseData);
 
             if (!response.ok) {
                 throw new Error(`Nepodařilo se odeslat data. Status: ${response.status}`);
@@ -156,6 +168,7 @@ export default function CaregiverForm() {
         setStep(1);
         setIsSubmitted(false);
         setResponseData(null);
+        setUserLocation(null);
     };
 
     return (
@@ -165,7 +178,7 @@ export default function CaregiverForm() {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-y-auto px-4 py-8 md:py-12">
-                <div className={`mx-auto w-full transition-all duration-500 ease-in-out ${isSubmitted ? 'max-w-4xl' : 'max-w-xl'}`}>
+                <div className={`mx-auto w-full transition-all duration-500 ease-in-out ${isSubmitted ? 'max-w-6xl' : 'max-w-xl'}`}>
                     {!isSubmitted ? (
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden wrap-break-word">
                             {/* Progress Bar */}
@@ -196,7 +209,7 @@ export default function CaregiverForm() {
                                 </div>
 
                                 {/* Forms content rendering */}
-                                <div className="space-y-8 min-h-[300px]">
+                                <div className="space-y-8" style={{ minHeight: '300px' }}>
                                     {step === 1 && (
                                         <StepOne data={data} updateData={updateData} />
                                     )}
@@ -258,9 +271,9 @@ export default function CaregiverForm() {
                             </div>
                         </div>
                     ) : (
-                        /* Submited State - Inline Chat */
+                        /* Submited State - Backend Result */
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <ResponseChat data={responseData} isLoading={isSubmitting} onReset={handleReset} />
+                            <ResponseChat data={responseData} isLoading={isSubmitting} onReset={handleReset} userLocation={userLocation} />
                         </div>
                     )}
                 </div>

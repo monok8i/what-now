@@ -25,3 +25,7 @@ test.json
 datasets/
 
 _gemma4/
+
+# Folder's metadata
+.DS_Store
+Thumbs.db
