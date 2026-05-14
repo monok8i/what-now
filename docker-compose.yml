@@ -4,19 +4,16 @@ networks:
     driver: bridge
 
 services:
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: frontend
-  #   ports:
-  #     - "3000:3000"
-  #   restart: unless-stopped
-  #   # environment:
-  #   # NODE_ENV: production
-  #   # NEXT_PUBLIC_API_URL: http://localhost:8000/api # Případná vrchní ukázka pro backend
-  #   networks:
-  #     - what-now-network
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - what-now-network
 
   backend:
     image: backend:latest

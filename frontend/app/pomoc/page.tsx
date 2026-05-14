@@ -38,11 +38,36 @@ export default function CaregiverForm() {
         setData((prev) => ({ ...prev, ...fields }));
     };
 
+    const getCurrentPosition = () => {
+        if (typeof window === "undefined" || !navigator.geolocation) {
+            return Promise.resolve<{ lat: number; lon: number } | null>(null);
+        }
+
+        return new Promise<{ lat: number; lon: number } | null>((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude,
+                    });
+                },
+                () => resolve(null),
+                {
+                    enableHighAccuracy: false,
+                    timeout: 10000,
+                    maximumAge: 60000,
+                }
+            );
+        });
+    };
+
     const submitForm = async () => {
         setIsSubmitting(true);
         setIsSubmitted(true);
         setSubmitError(null);
         setResponseData(null);
+
+        const geo = await getCurrentPosition();
 
         // Map internal form state to the required API payload structure
         const payload = {
@@ -57,15 +82,15 @@ export default function CaregiverForm() {
             additional_help: data.pomoc,
             employment_status: data.prace,
             main_concerns: data.trapi,
+            lat: geo?.lat ?? null,
+            lon: geo?.lon ?? null,
         };
 
-        // Determine API URL based on environment
-        // NOTE: Zde si změň URL adresy podle potřeby!
         let apiUrl = 'https://tvuj-produkcni-zapisovy-endpoint.cz/api/data';
         if (typeof window !== 'undefined') {
             const hostname = window.location.hostname;
             if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' || hostname.startsWith('192.168.')) {
-                apiUrl = `http://${hostname}:8001/api/data`;
+                apiUrl = `http://${hostname}:8000/api/v1/answer`;
             }
         }
         apiUrl = process.env.NEXT_PUBLIC_API_URL || apiUrl;
