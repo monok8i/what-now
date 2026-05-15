@@ -29,3 +29,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Compact Leaflet popup adjustments */
+.leaflet-popup-content-wrapper.compact-popup {
+  padding: 6px !important;
+  border-radius: 8px !important;
+}
+
+.leaflet-popup-content.compact-popup,
+.leaflet-popup-content-wrapper.compact-popup .leaflet-popup-content {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.leaflet-container .leaflet-popup-content-wrapper p {
+  margin: 0 0 4px 0;
+}

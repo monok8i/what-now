@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import { CircleMarker } from "react-leaflet";
 // @ts-ignore: CSS import from node_modules
@@ -56,10 +55,11 @@ const customMarkerIcon = typeof window !== "undefined" ?
         iconUrl: "/marker-icon.png",
         iconRetinaUrl: "/marker-icon-2x.png",
         shadowUrl: "/marker-shadow.png",
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
+        // slightly smaller icon so many points remain visible
+        iconSize: [18, 28],
+        iconAnchor: [9, 28],
+        popupAnchor: [1, -26],
+        shadowSize: [28, 28]
     }) : undefined;
 
 const DEFAULT_CENTER: [number, number] = [49.8, 15.5];
@@ -193,41 +193,39 @@ export default function Map({ services, userLocation }: MapProps) {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            <MarkerClusterGroup chunkedLoading>
-                {normalizedServices.map((record) => (
-                    <Marker
-                        key={record.id}
-                        position={[record.lat, record.lon]}
-                        icon={customMarkerIcon}
-                    >
-                        <Popup>
-                            <div className="flex w-full max-w-60 flex-col gap-1">
-                                <h3 className="text-sm font-bold leading-tight text-slate-900">{record.location.service_name || record.provider_name || 'Služba'}</h3>
+            {normalizedServices.map((record) => (
+                <Marker
+                    key={record.id}
+                    position={[record.lat, record.lon]}
+                    icon={customMarkerIcon}
+                >
+                    <Popup minWidth={140} maxWidth={280} className="leaflet-popup-content-wrapper compact-popup">
+                        <div className="flex w-full max-w-[14rem] flex-col gap-0.5 text-xs">
+                            <h3 className="text-sm font-semibold leading-tight text-slate-900">{record.location.service_name || record.provider_name || 'Služba'}</h3>
 
-                                <p className="text-xs leading-tight text-slate-600">
-                                    <span className="font-semibold text-slate-800">Poskytovatel:</span> {record.provider_name}
-                                </p>
+                            <p className="leading-tight text-slate-600">
+                                <span className="font-semibold text-slate-800">Poskytovatel:</span> {record.provider_name}
+                            </p>
 
-                                <p className="text-xs leading-tight text-slate-600">
-                                    <span className="font-semibold text-slate-800">Adresa:</span> {record.location.street} {record.location.number}, {record.location.municipality} {record.location.postal_code}
-                                </p>
+                            <p className="leading-tight text-slate-600">
+                                <span className="font-semibold text-slate-800">Adresa:</span> {record.location.street} {record.location.number}, {record.location.municipality} {record.location.postal_code}
+                            </p>
 
-                                <p className="text-xs leading-tight text-slate-600">
-                                    <span className="font-semibold text-slate-800">Město:</span> {record.location.municipality || record.location.district || '—'}
-                                </p>
+                            <p className="leading-tight text-slate-600">
+                                <span className="font-semibold text-slate-800">Město:</span> {record.location.municipality || record.location.district || '—'}
+                            </p>
 
-                                <p className="text-xs leading-tight text-slate-600">
-                                    <span className="font-semibold text-slate-800">Vzdálenost:</span> {formatDistance(record.computedDistanceKm)}
-                                </p>
+                            <p className="leading-tight text-slate-600">
+                                <span className="font-semibold text-slate-800">Vzdálenost:</span> {formatDistance(record.computedDistanceKm)}
+                            </p>
 
-                                <p className="text-xs leading-tight text-slate-600">
-                                    <span className="font-semibold text-slate-800">Region:</span> {record.location.region || record.location.district || '—'}
-                                </p>
-                            </div>
-                        </Popup>
-                    </Marker>
-                ))}
-            </MarkerClusterGroup>
+                            <p className="leading-tight text-slate-600">
+                                <span className="font-semibold text-slate-800">Region:</span> {record.location.region || record.location.district || '—'}
+                            </p>
+                        </div>
+                    </Popup>
+                </Marker>
+            ))}
 
             {hasUserLocation && userLocation && (
                 <CircleMarker

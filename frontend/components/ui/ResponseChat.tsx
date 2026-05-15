@@ -266,7 +266,7 @@ export function ResponseChat({ data, isLoading = false, onReset, userLocation = 
                                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-all hover:bg-indigo-700 hover:shadow-md hover:shadow-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                                 >
                                     <MapPin className="h-4 w-4" />
-                                    Переглянути найближчі служби
+                                    Zobrazit nejbližší služby
                                 </button>
                             </div>
                         )}
@@ -289,7 +289,7 @@ export function ResponseChat({ data, isLoading = false, onReset, userLocation = 
                         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900">
-                                    Zнайдено {normalizedMapServices.length} служб v okruhu 100 kilometrů
+                                    Nalezeno {normalizedMapServices.length} služeb do 100 kilometrů
                                 </h3>
                                 <p className="text-sm text-slate-500">Kliknutím na bod na mapě zobrazíte detail služby.</p>
                             </div>
