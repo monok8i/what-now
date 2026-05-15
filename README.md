@@ -1,331 +1,216 @@
-# Hackujstat 2026 - Podpora pečujících osob
+# What Now? (Co teď?)
 
-> **Nejste v tom sami. Péče o blízké s lehkostí.**
+AI-powered web platform for people caring for an elderly or ill loved one.
 
-Platforma vytvořená během HackujStát 2026, která pomáhá pečujícím osobám orientovat se v systému sociálních dávek a najít podporu ve svém okolí.
+The project combines:
 
-## 📋 O projektu
+- guided intake form,
+- legal-information retrieval (RAG),
+- AI-generated personalized recommendations,
+- interactive map of nearby social services.
 
-Když člověk náhle musí začít pečovat o nemohoucího blízkého, často neví, kde začít. Naše aplikace poskytuje:
+## Why This Project Exists
 
-- 🤖 **AI asistenta** pro odpovědi na otázky o sociálních dávkách
-- 📝 **Interaktivní dotazník** pro identifikaci nároků na benefity
-- 🗺️ **Mapu služeb** - vizualizace dostupných zařízení v okolí
-- 📊 **Databázi benefitů** - automaticky aktualizované informace z úředních zdrojů
-- 💬 **Real-time chat** - konverzace s AI přes WebSocket
+When caregiving starts suddenly, people usually do not know:
 
-## 🚀 Funkce
+- what support they are entitled to,
+- what practical steps to take first,
+- which services are available nearby.
 
-### Pro uživatele
-- **Dotazník v 4 krocích**: Jednoduchý proces zjištění nároků na dávky a služby
-- **AI chat asistent**: Specializovaný na sociální dávky v ČR, region Teplice
-- **Mapa poskytovatelů služeb**: Zobrazení nejbližších zařízení sociální péče
-- **Personalizované výsledky**: Doporučení založená na konkrétní situaci
+What Now helps users move from uncertainty to an actionable plan in a few minutes.
 
-### Technické
-- **Automatická synchronizace dat**: Denní stahování z ČSSZ, NKOD a RPSS
-- **Vector search**: Vyhledávání relevantních benefitů pomocí AI
-- **Real-time komunikace**: WebSocket připojení pro okamžité odpovědi
-- **Geocoding**: Automatické získávání souřadnic pomocí RUIAN API
+## Product Workflow (End-to-End)
 
-## 🛠️ Technologie
+1. User opens frontend and fills a 4-step caregiving questionnaire.
+2. Frontend sends form data to backend endpoint `POST /api/v1/answer`.
+3. Backend converts answers into a compact retrieval query.
+4. Backend performs semantic search over indexed legal chunks in PostgreSQL + pgvector.
+5. Backend asks AI model for a grounded response based on retrieved sources.
+6. Backend finds relevant social services (semantic + optional geo-radius filter).
+7. Frontend renders the response (Markdown) and service map (Leaflet).
+8. User can continue in chat (`POST /api/v1/chat/message` or WebSocket `/api/v1/chat/ws`).
+
+## High-Level Architecture
+
+### Frontend (Next.js)
+
+- Multi-step form (`/pomoc`)
+- Result view with AI response and map modal
+- Dedicated map page (`/mapa`)
+- Responsive UI for desktop and mobile
+
+### Backend (FastAPI)
+
+- Laws ingestion and chunk indexing (JSON/PDF)
+- Semantic search over legal text
+- First-answer generation from form data
+- Chat endpoint (HTTP + WebSocket)
+- Social-service filtering and semantic matching
+
+### Data Layer
+
+- PostgreSQL 16
+- pgvector extension for embedding similarity
+- Alembic migrations
+- Main entities: law chunks, social services, service locations, target groups
+
+## Technology Stack
 
 ### Frontend
-- **Next.js 16** - React framework
-- **React 19** - UI knihovna
-- **TypeScript** - typová bezpečnost
-- **Tailwind CSS 4** - styling
-- **Leaflet** - interaktivní mapy
-- **react-markdown** - rendering Markdown odpovědí
+
+- Next.js 16.1.6
+- React 19.2.3
+- TypeScript 5
+- Tailwind CSS 4
+- @tailwindcss/typography
+- Leaflet 1.9.4
+- React Leaflet 5.0.0
+- react-markdown + remark-gfm
+- Lucide React
+- ESLint 9
 
 ### Backend
-- **FastAPI** - async Python framework
-- **SQLAlchemy 2.0** - ORM s async support
-- **PostgreSQL 16** - relační databáze
-- **Alembic** - database migrations
-- **APScheduler** - plánování úloh
-- **OpenRouter** - AI API integrace (Gemini)
 
-### Infrastructure
-- **Docker Compose** - orchestrace kontejnerů
-- **asyncpg** - async PostgreSQL driver
-- **Uvicorn** - ASGI server
+- Python 3.13+
+- FastAPI (async API)
+- Uvicorn
+- SQLAlchemy 2 (async)
+- asyncpg
+- pgvector
+- Alembic
+- Pydantic + pydantic-settings
+- httpx
+- OpenAI-compatible client (`openai` package)
+- sentence-transformers
+- pypdf
 
-## 📁 Struktura projektu
+### Infrastructure / Tooling
 
-```
-hackujstat-2026/
-├── frontend/                 # Next.js aplikace
-│   ├── app/                 # App router pages
-│   │   ├── page.tsx        # Hlavní stránka
-│   │   └── pomoc/          # Dotazník
-│   ├── components/          # React komponenty
-│   │   ├── steps/          # Kroky dotazníku
-│   │   ├── ui/             # UI komponenty (chat, karty)
-│   │   └── layout/         # Layout komponenty
-│   └── types/              # TypeScript typy
-│
-├── backend/                 # FastAPI aplikace
-│   ├── main.py             # Entry point
-│   ├── scheduler.py        # Task scheduler (denní synchronizace)
-│   ├── migrations/         # Alembic migrations
-│   ├── src/
-│   │   ├── api/           # API endpoints
-│   │   │   ├── endpoints/
-│   │   │   │   ├── ws.py      # WebSocket chat
-│   │   │   │   └── data.py    # REST API
-│   │   │   └── schemas.py     # Pydantic modely
-│   │   ├── config/        # Konfigurace
-│   │   └── infra/
-│   │       ├── ai/        # OpenRouter client
-│   │       ├── db/        # Database modely
-│   │       ├── services/  # Business logika
-│   │       └── external_api/parse/   # Data parsery
-│   │           ├── cssz.py          # ČSSZ downloader
-│   │           ├── nkod.py          # NKOD downloader
-│   │           └── rpss_sync.py     # RPSS synchronizace
-│   └── hackujstat/        # Data processing scripts
-│
-└── docker-compose.yml      # Docker orchestrace
+- Docker + Docker Compose
+- uv (Python package/dependency manager)
+- PostgreSQL image: `pgvector/pgvector:0.6.0-pg16`
+
+### Optional/Experimental Parts in Repository
+
+- `tasks/` service (Celery, Playwright, RabbitMQ) prepared for async parsing workflows
+- Services are currently commented out in `docker-compose.yml` and are not part of the default runtime
+- `_gemma4/` scripts in backend are experimental CLI utilities
+
+## Repository Structure
+
+```text
+what-now/
+├── docker-compose.yml
+├── frontend/                  # Next.js application
+├── backend/                   # FastAPI application
+├── tasks/                     # Optional task workers (currently not active in compose)
+└── test_docker.sh             # Convenience script for compose validation/start
 ```
 
-## 📦 Prerekvizity
+## API Overview
 
-- **Docker** a **Docker Compose**
-- **Git**
-- **OpenRouter API key** (pro AI funkce)
+Base prefix: `/api/v1`
 
-## ⚙️ Instalace a spuštění
+- `GET /laws/health` - laws slice health check
+- `POST /laws/` - upload/index law documents
+- `GET /laws/` - semantic law search
+- `POST /answer` - first personalized answer from intake form
+- `POST /chat/message` - one-shot chat response
+- `WS /chat/ws` - realtime chat channel
+- `GET /map/services` - paginated map services with filters
+- `GET /map/services/{source_service_id}` - service detail
+- `POST /map/services/search` - semantic + geo service search
 
-### 1. Klonování repozitáře
+## Quick Start (Docker)
+
+### 1. Prerequisites
+
+- Docker + Docker Compose
+- API credentials and model configuration for backend AI endpoint
+
+### 2. Configure environment
+
+Create backend environment file:
 
 ```bash
-git clone https://github.com/Apollyus/hackujstat-2026.git
-cd hackujstat-2026
+cp backend/.env.example backend/.env
 ```
 
-### 2. Konfigurace backendu
-
-Vytvořte `.env` soubor v `backend/` složce:
+If `.env.example` is not present, create `backend/.env` manually and provide at least:
 
 ```bash
+# API
+API_HOST=0.0.0.0
+API_PORT=8001
+
 # Database
 POSTGRES_USER=backend
 POSTGRES_PASSWORD=secret
 POSTGRES_HOST=backend-db
 POSTGRES_PORT=5432
-POSTGRES_DB=hackujstat
+POSTGRES_DB=whatnow
 
-# AI (Povinné)
-OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
-OPENROUTER_AI_MODEL=google/gemini-2.5-flash-lite-preview-09-2025
+# AI
+AI_MODEL_NAME=your-model-name
+AI_SERVER_URL=https://your-ai-endpoint
+AI_REQUEST_TIMEOUT=60
 ```
 
-**Získání OpenRouter API klíče:**
-1. Zaregistrujte se na [openrouter.ai](https://openrouter.ai)
-2. Vytvořte nový API klíč v nastavení
-3. Vložte klíč do `.env` souboru
-
-### 3. Build a spuštění
+### 3. Run containers
 
 ```bash
-# Build všech služeb
-docker compose build
-
-# Spuštění aplikace
-docker compose up frontend backend backend-db scheduler
+docker compose --env-file backend/.env up -d --build
 ```
 
-**Dostupné služby:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8001
-- Backend API docs: http://localhost:8001/docs
+### 4. Open services
 
-### 4. Inicializace databáze
+- Frontend: `http://localhost:3000`
+- Backend API docs: `http://localhost:8001/docs`
 
-Migrace se spustí automaticky při startu backendu. Pro manuální spuštění:
+### 5. Stop environment
 
 ```bash
-docker compose exec backend alembic upgrade head
+docker compose --env-file backend/.env down
 ```
 
-### 5. Synchronizace dat (volitelné)
+## Local Development (Without Docker)
 
-Scheduler automaticky stahuje data denně v 3:00. Pro manuální spuštění:
+### Backend
 
-```bash
-# Spustit všechny downloady
-docker compose up scheduler
-
-# Nebo jednotlivé scripty
-docker compose exec backend python -m src.infra.external_api.parse.rpss_sync
-```
-
-## 🔗 API Endpointy
-
-### REST API
-
-```
-GET  /data/health              - Health check
-POST /data/                    - Vyhledávání benefitů dle dotazníku
-GET  /data/services/map        - Data pro mapu služeb
-```
-
-### WebSocket
-
-```
-WS   /ws/chat                  - Real-time AI chat
-```
-
-**Příklad použití WebSocket:**
-
-```javascript
-const ws = new WebSocket('ws://localhost:8001/ws/chat');
-
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    message: 'Jaký mám nárok na příspěvek na péči?'
-  }));
-};
-
-ws.onmessage = (event) => {
-  const response = JSON.parse(event.data);
-  console.log(response);
-};
-```
-
-## 🗄️ Databázové modely
-
-### BenefitService
-Ukládá informace o sociálních dávkách a službách:
-- ID, kategorie, instituce, název
-- Textový obsah (popis benefitu)
-- JSONB podmínky pro matching (věk, závislost, region, atd.)
-
-### ExtractedService
-Data z RPSS (Register poskytovatelů sociálních služeb):
-- Portal ID, identifikátor
-- Adresy s GPS souřadnicemi
-- Kontakty, telefony, weby
-- Osoby (vedoucí, statutární orgány)
-- Organizace
-
-## 🤖 AI Chat asistent
-
-### Funkce asistenta:
-- Odpovídá česky na otázky o sociálních dávkách
-- Vyhledává v databázi relevantní benefity
-- Klade upřesňující otázky
-- Formátuje odpovědi v Markdownu
-- Pamatuje si kontext konverzace
-
-### Technické detaily:
-- Model: Google Gemini 2.5 Flash Lite (přes OpenRouter)
-- Optimalizace dotazů pomocí menšího modelu
-- Kombinace databázových výsledků a webových zdrojů
-- Automatické omezení historie na 20 zpráv
-
-## 📅 Automatická synchronizace dat
-
-Scheduler (`scheduler.py`) spouští denně v 3:00:
-
-1. **ČSSZ download** - data z České správy sociálního zabezpečení
-2. **NKOD download** - data z Národního katalogu otevřených dat
-3. **RPSS sync** - kompletní synchronizace registru sociálních služeb:
-   - Stažení JSON z MPSV portálu
-   - Extrakce adres, kontaktů, osob
-   - Geocoding přes RUIAN API
-   - Upsert do PostgreSQL
-
-## 🧪 Vývoj
-
-### Lokální development bez Dockeru
-
-**Backend:**
 ```bash
 cd backend
-
-# Instalace závislostí (s uv)
 uv sync
-
-# Aktivace virtual environment
 source .venv/bin/activate
-
-# Spuštění dev serveru
-uvicorn main:app --reload --host 0.0.0.0 --port 8001
+alembic upgrade head
+python main.py
 ```
 
-**Frontend:**
+### Frontend
+
 ```bash
 cd frontend
-
-# Instalace závislostí
 npm install
-
-# Dev server
 npm run dev
 ```
 
-### Database migrations
+## Data & Search Notes
 
-```bash
-# Vytvořit novou migraci
-docker compose exec backend alembic revision --autogenerate -m "popis zmeny"
+- Legal text is chunked and stored with embeddings.
+- Query and chunk vectors are compared using cosine distance in pgvector.
+- Social-service matching combines semantic similarity with optional location radius.
+- If user location is missing, semantic matching still works without geo filtering.
 
-# Spustit migrace
-docker compose exec backend alembic upgrade head
+## Current Scope and Limitations
 
-# Rollback
-docker compose exec backend alembic downgrade -1
-```
+- Primary product language is Czech.
+- AI quality depends on configured external AI server/model.
+- No active scheduler runtime flow is currently wired into backend runtime path.
 
-## 🐛 Debugging
+## Additional Documentation
 
-### Zobrazit logy
+- Frontend details: `frontend/README.md`
+- Backend details: `backend/README.md`
 
-```bash
-# Všechny služby
-docker compose logs -f
+# License
 
-# Konkrétní služba
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose logs -f scheduler
-```
-
-### Restart služby
-
-```bash
-docker compose restart backend
-```
-
-### Připojení k databázi
-
-```bash
-docker compose exec backend-db psql -U backend -d hackujstat
-```
-
-## 📝 Poznámky
-
-### Datové zdroje
-- **RPSS**: https://data.mpsv.cz/od/soubory/rpss/rpss.json
-- **RUIAN API**: Geocoding přes CUZK ArcGIS REST API
-- **ČSSZ**: CSV export z portálu ČSSZ
-- **NKOD**: SPARQL endpoint národního katalogu
-
-### Omezení
-- AI asistent je optimalizován pro region Teplice
-- Geocoding omezen na české adresy
-- OpenRouter API vyžaduje platný klíč
-
-## 📄 Licence
-
-Projekt vytvořený během HackujStát 2026.
-
-## 👥 Autoři
-
-Tým hackathonu HackujStát 2026
-
----
-
-**Potřebujete pomoc?** Otevřete issue v repozitáři nebo kontaktujte autory.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
