@@ -80,7 +80,6 @@ What Now helps users move from uncertainty to an actionable plan in a few minute
 - Alembic
 - Pydantic + pydantic-settings
 - httpx
-- OpenAI-compatible client (`openai` package)
 - sentence-transformers
 - pypdf
 
